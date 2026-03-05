@@ -1,1 +1,24 @@
+name: agente-braga
 
+on:
+  push:
+  schedule:
+    - cron: "0 */12 * * *"
+
+jobs:
+  run-agent:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: instalar python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+
+      - name: instalar dependencias
+        run: pip install -r requirements.txt
+
+      - name: executar agente
+        run: python agent.py
