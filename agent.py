@@ -1,42 +1,60 @@
 import requests
 from bs4 import BeautifulSoup
+from datetime import datetime
+import telegram
 
-url = "https://www.idealista.pt/comprar-casas/braga/"
+TOKEN = "TEU_TOKEN_TELEGRAM"
+CHAT_ID = "TEU_CHAT_ID"
 
-headers = {"User-Agent": "Mozilla/5.0"}
+bot = telegram.Bot(token=TOKEN)
 
-page = requests.get(url, headers=headers)
+URL = "https://www.idealista.pt/comprar-casas/braga/"
 
-soup = BeautifulSoup(page.text, "html.parser")
+headers = {
+    "User-Agent": "Mozilla/5.0"
+}
 
-ads = soup.find_all("article")
+response = requests.get(URL, headers=headers)
+soup = BeautifulSoup(response.text, "html.parser")
 
-for ad in ads[:20]:
+anuncios = soup.select(".item")
 
-    text = ad.get_text(" ", strip=True)
+relatorio = "RELATORIO IA IMOVEIS BRAGA\n\n"
 
-    price = None
-    size = None
+palavras_remodelar = [
+"remodelar",
+"recuperar",
+"obras",
+"para renovar",
+"investimento"
+]
 
-    for part in text.split():
+for anuncio in anuncios:
 
-        if "€" in part:
-            try:
-                price = int(part.replace("€", "").replace(".", ""))
-            except:
-                pass
+    titulo = anuncio.select_one(".item-link")
+    preco = anuncio.select_one(".item-price")
 
-        if "m²" in part:
-            try:
-                size = int(part.replace("m²", ""))
-            except:
-                pass
+    if titulo and preco:
 
-    if price and size:
+        titulo = titulo.text.strip()
+        preco = preco.text.strip()
 
-        price_m2 = price / size
+        oportunidade = False
 
-        if price_m2 < 1200:
-            print("🔥 OPORTUNIDADE")
+        for palavra in palavras_remodelar:
+            if palavra in titulo.lower():
+                oportunidade = True
 
-        print(price, "€", size, "m2 →", round(price_m2, 1), "€/m2")
+        if oportunidade:
+
+            relatorio += f"🏚 Remodelação: {titulo}\n"
+            relatorio += f"Preço: {preco}\n\n"
+
+        else:
+
+            relatorio += f"Imóvel: {titulo}\n"
+            relatorio += f"Preço: {preco}\n\n"
+
+relatorio += f"\nData: {datetime.now()}"
+
+bot.send_message(chat_id=CHAT_ID, text=relatorio)
