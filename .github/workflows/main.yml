@@ -10,10 +10,6 @@ jobs:
   run-agent:
     runs-on: ubuntu-latest
 
-jobs:
-  run-agent:
-    runs-on: ubuntu-latest
-
     steps:
       - uses: actions/checkout@v3
 
