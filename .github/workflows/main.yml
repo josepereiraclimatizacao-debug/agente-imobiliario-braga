@@ -1,7 +1,6 @@
 name: agente-braga
 
 on:
-  workflow_dispatch:
   push:
   schedule:
     - cron: "0 */12 * * *"
