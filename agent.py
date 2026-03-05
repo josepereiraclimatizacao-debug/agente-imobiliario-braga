@@ -3,7 +3,7 @@ from bs4 import BeautifulSoup
 from datetime import datetime
 import telegram
 
-TOKEN = "TEU_TOKEN_TELEGRAM"
+TOKEN = "8748185653:AAEPBPxz5Qfc_W5P+tyWEJmTWG_AQowYTBwY"
 CHAT_ID = "TEU_CHAT_ID"
 
 bot = telegram.Bot(token=TOKEN)
