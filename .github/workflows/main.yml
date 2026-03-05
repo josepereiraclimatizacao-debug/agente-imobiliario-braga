@@ -1,9 +1,14 @@
 name: agente-braga
 
 on:
+  workflow_dispatch:
   push:
   schedule:
     - cron: "0 */12 * * *"
+
+jobs:
+  run-agent:
+    runs-on: ubuntu-latest
 
 jobs:
   run-agent:
