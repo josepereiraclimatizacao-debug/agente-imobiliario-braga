@@ -57,4 +57,9 @@ for anuncio in anuncios:
 
 relatorio += f"\nData: {datetime.now()}"
 
-bot.send_message(chat_id=CHAT_ID, text=relatorio)
+import asyncio
+
+async def enviar():
+    await bot.send_message(chat_id=CHAT_ID, text=relatorio)
+
+asyncio.run(enviar())
