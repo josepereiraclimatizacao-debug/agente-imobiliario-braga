@@ -6,7 +6,7 @@ import asyncio
 import json
 import os
 
-TOKEN = "8748185653:AAGaSqvB__fqVqu3kjXJhg1LopYXw0XDqAM"
+TOKEN = "8748185653:AAF38BoAAiwlpRLeVzTv2x_ey8Fag_BD160"
 CHAT_ID = "8248415390"
 
 bot = telegram.Bot(token=TOKEN)
