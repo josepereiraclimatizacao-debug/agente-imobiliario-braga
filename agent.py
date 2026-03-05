@@ -18,7 +18,21 @@ response = requests.get(URL, headers=headers)
 soup = BeautifulSoup(response.text, "html.parser")
 
 anuncios = soup.select(".item")
+for anuncio in anuncios[:10]:
 
+    titulo = anuncio.select_one(".item-link")
+    preco = anuncio.select_one(".item-price")
+
+    if titulo and preco:
+        texto = f"""
+🏠 Apartamento encontrado
+
+{titulo.text.strip()}
+💰 {preco.text.strip()}
+
+https://www.idealista.pt
+"""
+        bot.send_message(chat_id=CHAT_ID, text=texto)
 relatorio = "RELATORIO IA IMOVEIS BRAGA\n\n"
 
 palavras_remodelar = [
