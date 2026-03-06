@@ -1,85 +1,200 @@
 import requests
 from bs4 import BeautifulSoup
-from datetime import datetime
 import telegram
 import asyncio
 import json
 import os
+from datetime import datetime
 
-TOKEN = "8748185653:AAFdV_AzTHoHsiYBfzCAM-AdoTxp5nhR8H0"
+# =========================
+# CONFIG
+# =========================
+
+TOKEN = "COLOCA_AQUI_O_TEU_TOKEN"
 CHAT_ID = "8248415390"
-
-bot = telegram.Bot(token=TOKEN)
-
 
 URL = "https://www.idealista.pt/comprar-casas/braga/"
 
-headers = {
+HEADERS = {
     "User-Agent": "Mozilla/5.0"
 }
 
-# carregar histórico
-historico_file = "historico.json"
+HISTORICO_FILE = "historico.json"
 
-if os.path.exists(historico_file):
-    with open(historico_file, "r") as f:
+PALAVRAS_RENOVAR = [
+    "remodelar",
+    "renovar",
+    "recuperar",
+    "obras",
+    "investimento"
+]
+
+bot = telegram.Bot(token=TOKEN)
+
+# =========================
+# HISTÓRICO
+# =========================
+
+if os.path.exists(HISTORICO_FILE):
+
+    with open(HISTORICO_FILE, "r") as f:
         historico = json.load(f)
+
 else:
+
     historico = []
 
-response = requests.get(URL, headers=headers)
+# =========================
+# SCRAPING
+# =========================
+
+response = requests.get(URL, headers=HEADERS)
+
 soup = BeautifulSoup(response.text, "html.parser")
 
 anuncios = soup.select(".item")
 
-novos_anuncios = []
+novos = []
 
-for anuncio in anuncios[:20]:
+total = 0
+oportunidades = 0
 
-    titulo_tag = anuncio.select_one(".item-link")
-    preco_tag = anuncio.select_one(".item-price")
-    link_tag = anuncio.select_one(".item-link")
+for anuncio in anuncios[:30]:
 
-    if titulo_tag and preco_tag and link_tag:
+    total += 1
 
-        titulo = titulo_tag.text.strip()
-        preco = preco_tag.text.strip()
+    titulo_elem = anuncio.select_one(".item-link")
+    preco_elem = anuncio.select_one(".item-price")
+    local_elem = anuncio.select_one(".item-location")
+    detalhe_elem = anuncio.select_one(".item-detail")
 
-        link = link_tag.get("href")
+    if titulo_elem and preco_elem:
 
-        if link.startswith("/"):
-            link = "https://www.idealista.pt" + link
+        titulo = titulo_elem.text.strip()
+        preco_txt = preco_elem.text.strip()
+
+        preco = int(preco_txt.replace("€","").replace(".","").strip())
+
+        if local_elem:
+            local = local_elem.text.strip()
+        else:
+            local = "Braga"
+
+        area = None
+
+        if detalhe_elem:
+            detalhes = detalhe_elem.text
+            if "m²" in detalhes:
+                try:
+                    area = int(detalhes.split("m²")[0].split()[-1])
+                except:
+                    area = None
+
+        if area:
+            preco_m2 = round(preco / area)
+        else:
+            preco_m2 = "?"
+
+        link = titulo_elem.get("href")
+        link = "https://www.idealista.pt" + link
 
         if link not in historico:
 
-            novos_anuncios.append({
-                "titulo": titulo,
-                "preco": preco,
-                "link": link
-            })
+            oportunidade = False
+
+            if preco < 120000:
+                oportunidade = True
+
+            for palavra in PALAVRAS_RENOVAR:
+                if palavra in titulo.lower():
+                    oportunidade = True
+
+            rent_estudante = round((preco * 0.06) / 12)
+
+            if oportunidade:
+
+                oportunidades += 1
+
+                texto = f"""
+🔥 OPORTUNIDADE
+
+🏠 {titulo}
+
+📍 {local}
+
+💰 {preco_txt}
+
+📐 {area} m²
+💰 €/m² {preco_m2}
+
+🏫 Renda estudante estimada
+≈ {rent_estudante} €/mês
+
+🔗 {link}
+"""
+
+            else:
+
+                texto = f"""
+🏠 Apartamento novo
+
+{titulo}
+
+📍 {local}
+
+💰 {preco_txt}
+
+📐 {area} m²
+💰 €/m² {preco_m2}
+
+🔗 {link}
+"""
+
+            novos.append(texto)
 
             historico.append(link)
 
-# guardar histórico
-with open(historico_file, "w") as f:
+# =========================
+# GUARDAR HISTÓRICO
+# =========================
+
+with open(HISTORICO_FILE, "w") as f:
     json.dump(historico, f)
 
-mensagem = "🏠 NOVOS IMÓVEIS EM BRAGA\n\n"
+# =========================
+# RELATÓRIO
+# =========================
 
-if novos_anuncios:
+relatorio = f"""
+📊 RELATÓRIO AGENTE BRAGA
 
-    for imovel in novos_anuncios[:10]:
+Anúncios analisados: {total}
 
-        mensagem += f"{imovel['titulo']}\n"
-        mensagem += f"💰 {imovel['preco']}\n"
-        mensagem += f"{imovel['link']}\n\n"
+Novos encontrados: {len(novos)}
 
-else:
-    mensagem += "Nenhum novo imóvel encontrado."
+Oportunidades: {oportunidades}
 
-mensagem += f"\nData: {datetime.now()}"
+Hora: {datetime.now()}
+"""
+
+# =========================
+# TELEGRAM
+# =========================
 
 async def enviar():
-    await bot.send_message(chat_id=CHAT_ID, text=mensagem)
+
+    if novos:
+
+        for msg in novos:
+
+            await bot.send_message(
+                chat_id=CHAT_ID,
+                text=msg
+            )
+
+    await bot.send_message(
+        chat_id=CHAT_ID,
+        text=relatorio
+    )
 
 asyncio.run(enviar())
