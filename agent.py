@@ -6,10 +6,11 @@ import asyncio
 import json
 import os
 
-TOKEN = "8748185653:AAFdV_AzTHoHsi..."
+TOKEN = "8748185653:AAFdV_AzTHoHsiYBfzCAM-AdoTxp5nhR8H0"
 CHAT_ID = "8248415390"
 
 bot = telegram.Bot(token=TOKEN)
+
 
 URL = "https://www.idealista.pt/comprar-casas/braga/"
 
