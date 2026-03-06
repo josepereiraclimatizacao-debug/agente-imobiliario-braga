@@ -10,7 +10,7 @@ from datetime import datetime
 # CONFIG
 # =========================
 
-TOKEN = "COLOCA_AQUI_O_TEU_TOKEN"
+TOKEN = "8748185653:AAG3KpW32UpNxDksYFg7QS-Gw_7obMFkDN4"
 CHAT_ID = "8248415390"
 
 URL = "https://www.idealista.pt/comprar-casas/braga/"
