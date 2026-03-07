@@ -1,14 +1,14 @@
 import requests
 from bs4 import BeautifulSoup
 import telegram
-import asyncio
 import json
 import os
 from datetime import datetime
+from urllib.parse import urljoin
 
-# =========================
+# ============================
 # CONFIG
-# =========================
+# ============================
 
 TOKEN = "8748185653:AAG5nXSBrbay_34zVtd7dUJFblvDy7XsaNc"
 CHAT_ID = "8248415390"
@@ -18,222 +18,141 @@ URLS = [
 "https://www.imovirtual.com/comprar/apartamento/braga/",
 "https://www.olx.pt/imoveis/apartamentos-casas-a-venda/braga/",
 "https://casa.sapo.pt/comprar-apartamentos/braga/",
-"https://supercasa.pt/comprar-casas/braga"
+"https://supercasa.pt/comprar-casas/braga/"
 ]
 
 HEADERS = {
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
-    "Accept-Language": "pt-PT,pt;q=0.9,en;q=0.8",
-    "Accept": "text/html,application/xhtml+xml",
-    "Referer": "https://www.google.com/",
-    "Connection": "keep-alive"
+"User-Agent": "Mozilla/5.0",
+"Accept-Language": "pt-PT,pt;q=0.9"
 }
 
 HISTORICO_FILE = "historico.json"
 
 PALAVRAS_RENOVAR = [
-    "remodelar",
-    "renovar",
-    "recuperar",
-    "obras",
-    "investimento"
+"remodelar",
+"renovar",
+"recuperar",
+"obras",
+"investimento",
+"para renovar"
 ]
+
+PALAVRAS_OPORTUNIDADE = [
+"urgente",
+"oportunidade",
+"abaixo do mercado",
+"preço negociável"
+]
+
+# ============================
+# TELEGRAM
+# ============================
 
 bot = telegram.Bot(token=TOKEN)
 
-# =========================
-# HISTÓRICO
-# =========================
+# ============================
+# HISTORICO
+# ============================
 
 if os.path.exists(HISTORICO_FILE):
 
-    with open(HISTORICO_FILE, "r") as f:
-        historico = json.load(f)
+    try:
+        with open(HISTORICO_FILE,"r") as f:
+            historico = json.load(f)
+    except:
+        historico = []
 
 else:
 
     historico = []
 
-# =========================
-# SCRAPING
-# =========================
+historico = historico[-2000:]
 
 # ============================
 # SCRAPING
 # ============================
 
-novos = []
 total = 0
+novos = []
 oportunidades = 0
 
-for URL in URLS:
+for url in URLS:
 
-    response = requests.get(URL, headers=HEADERS, timeout=10)
+    try:
 
-for URL in URLS:
+        response = requests.get(url,headers=HEADERS,timeout=15)
 
-    response = requests.get(URL, headers=HEADERS, timeout=10)
+        if response.status_code != 200:
+            continue
 
-    soup = BeautifulSoup(response.text, "html.parser")
+        soup = BeautifulSoup(response.text,"html.parser")
 
-    anuncios = soup.select("article")
-    if not anuncios:
-    anuncios = soup.select("article")
+        anuncios = soup.select("article, .item, .offer-item, .listing-item, .result-item")
 
-    soup = BeautifulSoup(response.text, "html.parser")
+        for anuncio in anuncios[:50]:
 
-    anuncios = soup.select("article")
+            link_elem = anuncio.select_one("a")
 
-    if not anuncios:
-    anuncios = soup.select("article")
+            if not link_elem:
+                continue
 
-    soup = BeautifulSoup(response.text, "html.parser")
+            link = link_elem.get("href")
 
-    anuncios = soup.select("article")
+            if not link:
+                continue
 
-    if not anuncios:
-    anuncios = soup.select("article")
+            link = urljoin(url,link)
 
-for URL in URLS:
+            titulo = link_elem.text.strip()
 
-    response = requests.get(URL, headers=HEADERS, timeout=10)
+            if not titulo:
+                titulo = "Imóvel em Braga"
 
-    soup = BeautifulSoup(response.text, "html.parser")
+            texto = titulo.lower()
 
-    anuncios = soup.select("article")
+            if link in historico:
+                continue
 
-    if not anuncios:
-    anuncios = soup.select("article")
+            historico.append(link)
+            novos.append(link)
 
-    soup = BeautifulSoup(response.text, "html.parser")
+            total += 1
 
-anuncios = soup.select("article.item")
-
-    if not anuncios:
-    anuncios = soup.select("article")
-
-for anuncio in anuncios[:30]:
-
-    total += 1
-
-    titulo_elem = anuncio.select_one(".item-link")
-    preco_elem = anuncio.select_one(".item-price")
-    local_elem = anuncio.select_one(".item-location")
-    detalhe_elem = anuncio.select_one(".item-detail")
-
-    if titulo_elem and preco_elem:
-
-        titulo = titulo_elem.text.strip()
-        preco_txt = preco_elem.text.strip()
-
-        preco = int(preco_txt.replace("€","").replace(" ",""))
-
-        if local_elem:
-            local = local_elem.text.strip()
-        else:
-            local = "Braga"
-
-        area = None
-
-        if detalhe_elem:
-            detalhes = detalhe_elem.text
-
-            if "m²" in detalhes:
-                try:
-                    area = int(detalhes.split("m²")[0].split()[-1])
-                except:
-                    area = None
-
-        if area:
-            preco_m2 = round(preco / area)
-        else:
-            preco_m2 = "?"
-
-        link = titulo_elem.get("href")
-
-        if link and not link.startswith("http"):
-            link = "https://www.idealista.pt" + link
-
-        novos.append({
-            "titulo": titulo,
-            "preco": preco,
-            "local": local,
-            "area": area,
-            "preco_m2": preco_m2,
-            "link": link
-        })                          
-
-        link = titulo_elem.get("href")
-        link = "https://www.idealista.pt" + link
-
-        if link not in historico:
-
-            oportunidade = False
-
-            if preco < 120000:
-                oportunidade = True
-
-            for palavra in PALAVRAS_RENOVAR:
-                if palavra in titulo.lower():
-                    oportunidade = True
-
-            rent_estudante = round((preco * 0.06) / 12)
-
-            if oportunidade:
+            if any(p in texto for p in PALAVRAS_RENOVAR) or any(p in texto for p in PALAVRAS_OPORTUNIDADE):
 
                 oportunidades += 1
 
-                texto = f"""
-🔥 OPORTUNIDADE
-
-🏠 {titulo}
-
-📍 {local}
-
-💰 {preco_txt}
-
-📐 {area} m²
-💰 €/m² {preco_m2}
-
-🏫 Renda estudante estimada
-≈ {rent_estudante} €/mês
-
-🔗 {link}
-"""
-
-            else:
-
-                texto = f"""
-🏠 Apartamento novo
+                mensagem = f"""
+🏚 OPORTUNIDADE DETECTADA
 
 {titulo}
 
-📍 {local}
-
-💰 {preco_txt}
-
-📐 {area} m²
-💰 €/m² {preco_m2}
-
-🔗 {link}
+{link}
 """
 
-            novos.append(texto)
+                try:
+                    bot.send_message(chat_id=CHAT_ID,text=mensagem)
+                except:
+                    pass
 
-            historico.append(link)
+    except Exception as e:
+        print("Erro scraping:",e)
 
-# =========================
-# GUARDAR HISTÓRICO
-# =========================
+# ============================
+# GUARDAR HISTORICO
+# ============================
 
-with open(HISTORICO_FILE, "w") as f:
-    json.dump(historico, f)
+try:
+    with open(HISTORICO_FILE,"w") as f:
+        json.dump(historico,f)
+except:
+    pass
 
-# =========================
-# RELATÓRIO
-# =========================
+# ============================
+# RELATORIO
+# ============================
 
-relatorio = f"""
+mensagem = f"""
 📊 RELATÓRIO AGENTE BRAGA
 
 Anúncios analisados: {total}
@@ -245,24 +164,7 @@ Oportunidades: {oportunidades}
 Hora: {datetime.now()}
 """
 
-# =========================
-# TELEGRAM
-# =========================
-
-async def enviar():
-
-    if novos:
-
-        for msg in novos:
-
-            await bot.send_message(
-                chat_id=CHAT_ID,
-                text=msg
-            )
-
-    await bot.send_message(
-        chat_id=CHAT_ID,
-        text=relatorio
-    )
-
-asyncio.run(enviar())
+try:
+    bot.send_message(chat_id=CHAT_ID,text=mensagem)
+except:
+    pass
