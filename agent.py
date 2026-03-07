@@ -77,6 +77,10 @@ for URL in URLS:
 
     anuncios = soup.select("article")
 
+    soup = BeautifulSoup(response.text, "html.parser")
+
+    anuncios = soup.select("article")
+
 if response.status_code != 200:
     continue
 
