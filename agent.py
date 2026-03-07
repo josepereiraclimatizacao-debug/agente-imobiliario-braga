@@ -52,7 +52,7 @@ response = requests.get(URL, headers=HEADERS)
 
 soup = BeautifulSoup(response.text, "html.parser")
 
-anuncios = soup.select(".item")
+anuncios = soup.select("article")
 
 novos = []
 
