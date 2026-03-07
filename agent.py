@@ -77,13 +77,21 @@ for URL in URLS:
     soup = BeautifulSoup(response.text, "html.parser")
 
     anuncios = soup.select("article")
+    if not anuncios:
+    anuncios = soup.select("article")
 
     soup = BeautifulSoup(response.text, "html.parser")
 
     anuncios = soup.select("article")
 
+    if not anuncios:
+    anuncios = soup.select("article")
+
     soup = BeautifulSoup(response.text, "html.parser")
 
+    anuncios = soup.select("article")
+
+    if not anuncios:
     anuncios = soup.select("article")
 
 for URL in URLS:
@@ -94,9 +102,15 @@ for URL in URLS:
 
     anuncios = soup.select("article")
 
+    if not anuncios:
+    anuncios = soup.select("article")
+
     soup = BeautifulSoup(response.text, "html.parser")
 
 anuncios = soup.select("article.item")
+
+    if not anuncios:
+    anuncios = soup.select("article")
 
 for anuncio in anuncios[:30]:
 
