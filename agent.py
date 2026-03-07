@@ -58,7 +58,12 @@ else:
 # SCRAPING
 # =========================
 
-response = requests.get(URL, headers=HEADERS)
+for URL in URLS:
+    response = requests.get(URL, headers=HEADERS)
+
+    soup = BeautifulSoup(response.text, "html.parser")
+
+    anuncios = soup.select("article")
 
 soup = BeautifulSoup(response.text, "html.parser")
 
