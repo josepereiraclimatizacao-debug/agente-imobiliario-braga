@@ -72,10 +72,11 @@ for URL in URLS:
 
     soup = BeautifulSoup(response.text, "html.parser")
 
-    anuncios = soup.select("article, .item, .offer-item, .listing-item")
+    anuncios = soup.select("article, .item, .offer-item, .listing-
 
-for anuncio in anuncios[:30]:
-        total += 1
+ for anuncio in anuncios[:30]:
+
+    total += 1
 
     titulo_elem = anuncio.select_one(".item-link")
     preco_elem = anuncio.select_one(".item-price")
@@ -87,7 +88,7 @@ for anuncio in anuncios[:30]:
         titulo = titulo_elem.text.strip()
         preco_txt = preco_elem.text.strip()
 
-        preco = int(preco_txt.replace("€","").replace(".","").strip())
+        preco = int(preco_txt.replace("€","").replace(" ",""))
 
         if local_elem:
             local = local_elem.text.strip()
@@ -98,6 +99,7 @@ for anuncio in anuncios[:30]:
 
         if detalhe_elem:
             detalhes = detalhe_elem.text
+
             if "m²" in detalhes:
                 try:
                     area = int(detalhes.split("m²")[0].split()[-1])
@@ -108,6 +110,20 @@ for anuncio in anuncios[:30]:
             preco_m2 = round(preco / area)
         else:
             preco_m2 = "?"
+
+        link = titulo_elem.get("href")
+
+        if link and not link.startswith("http"):
+            link = "https://www.idealista.pt" + link
+
+        novos.append({
+            "titulo": titulo,
+            "preco": preco,
+            "local": local,
+            "area": area,
+            "preco_m2": preco_m2,
+            "link": link
+        })                          
 
         link = titulo_elem.get("href")
         link = "https://www.idealista.pt" + link
