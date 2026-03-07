@@ -50,6 +50,8 @@ PALAVRAS_OPORTUNIDADE = [
 
 bot = telegram.Bot(token=TOKEN)
 
+bot.send_message(chat_id=CHAT_ID, text="✅ Teste agente Braga iniciado")
+
 # ============================
 # HISTORICO
 # ============================
