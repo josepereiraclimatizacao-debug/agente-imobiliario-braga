@@ -58,23 +58,24 @@ else:
 # SCRAPING
 # =========================
 
+# ============================
+# SCRAPING
+# ============================
+
+novos = []
+total = 0
+oportunidades = 0
+
 for URL in URLS:
+
     response = requests.get(URL, headers=HEADERS)
-    
 
     soup = BeautifulSoup(response.text, "html.parser")
 
     anuncios = soup.select("article, .item, .offer-item, .listing-item")
 
-
-novos = []
-
-total = 0
-oportunidades = 0
-
-for anuncio in anuncios[:30]:
-
-    total += 1
+    for anuncio in anuncios[:30]:
+        total += 1
 
     titulo_elem = anuncio.select_one(".item-link")
     preco_elem = anuncio.select_one(".item-price")
