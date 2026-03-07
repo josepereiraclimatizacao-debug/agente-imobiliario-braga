@@ -13,7 +13,13 @@ from datetime import datetime
 TOKEN = "8748185653:AAG5nXSBrbay_34zVtd7dUJFblvDy7XsaNc"
 CHAT_ID = "8248415390"
 
-URL = "https://www.idealista.pt/comprar-casas/braga/"
+URLS = [
+"https://www.idealista.pt/comprar-casas/braga/",
+"https://www.imovirtual.com/comprar/apartamento/braga/",
+"https://www.olx.pt/imoveis/apartamentos-casas-a-venda/braga/",
+"https://casa.sapo.pt/comprar-apartamentos/braga/",
+"https://supercasa.pt/comprar-casas/braga"
+]
 
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
