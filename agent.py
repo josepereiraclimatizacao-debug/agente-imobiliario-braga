@@ -17,8 +17,10 @@ URL = "https://www.idealista.pt/comprar-casas/braga/"
 
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
-    "Accept-Language": "pt-PT,pt;q=0.9",
-    "Accept": "text/html,application/xhtml+xml"
+    "Accept-Language": "pt-PT,pt;q=0.9,en;q=0.8",
+    "Accept": "text/html,application/xhtml+xml",
+    "Referer": "https://www.google.com/",
+    "Connection": "keep-alive"
 }
 
 HISTORICO_FILE = "historico.json"
