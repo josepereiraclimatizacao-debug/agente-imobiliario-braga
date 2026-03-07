@@ -61,13 +61,16 @@ else:
 for URL in URLS:
     response = requests.get(URL, headers=HEADERS)
 
+    for URL in URLS:
+
+    response = requests.get(URL, headers=HEADERS)
+
     soup = BeautifulSoup(response.text, "html.parser")
 
-    anuncios = soup.select(".item")
+    anuncios = soup.select("article, .item, .offer-item, .listing-item")
 
-soup = BeautifulSoup(response.text, "html.parser")
-
-anuncios = soup.select(".item")
+    for anuncio in anuncios[:30]:
+        total += 1
 
 novos = []
 
