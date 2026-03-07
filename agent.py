@@ -74,7 +74,7 @@ for URL in URLS:
 
 anuncios = soup.select("article, .item, .offer-item, .listing-item")
 
- for anuncio in anuncios[:30]:
+for anuncio in anuncios[:30]:
 
     total += 1
 
