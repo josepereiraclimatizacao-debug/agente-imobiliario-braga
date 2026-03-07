@@ -68,7 +68,14 @@ oportunidades = 0
 
 for URL in URLS:
 
-response = requests.get(URL, headers=HEADERS, timeout=10)
+    response = requests.get(URL, headers=HEADERS, timeout=10)
+
+    if response.status_code != 200:
+        continue
+
+    soup = BeautifulSoup(response.text, "html.parser")
+
+    anuncios = soup.select("article")
 
 if response.status_code != 200:
     continue
