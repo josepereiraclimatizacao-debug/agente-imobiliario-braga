@@ -63,11 +63,11 @@ for URL in URLS:
 
     soup = BeautifulSoup(response.text, "html.parser")
 
-    anuncios = soup.select("article")
+    anuncios = soup.select(".item")
 
 soup = BeautifulSoup(response.text, "html.parser")
 
-anuncios = soup.select("article")
+anuncios = soup.select(".item")
 
 novos = []
 
