@@ -72,7 +72,7 @@ for URL in URLS:
 
     soup = BeautifulSoup(response.text, "html.parser")
 
-anuncios = soup.select("article, .item, .offer-item, .listing-item")
+anuncios = soup.select("article")
 
 for anuncio in anuncios[:30]:
 
