@@ -89,7 +89,9 @@ for url in URLS:
 
         soup = BeautifulSoup(response.text,"html.parser")
 
-        anuncios = soup.select("article, .item, .offer-item, .listing-item, .result-item")
+        anuncios = soup.select("article")
+
+print("ANUNCIOS ENCONTRADOS:", len(anuncios))
 
         for anuncio in anuncios[:50]:
 
