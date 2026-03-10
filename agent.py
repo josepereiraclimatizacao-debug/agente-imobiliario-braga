@@ -104,8 +104,8 @@ for url in URLS:
 
             link = link_elem.get("href")
 
-    except Exception as e:
-        print("Erro scraping:", e)
+except Exception as e:
+   print("Erro scraping:", e)
 
         for anuncio in anuncios[:50]:
 
