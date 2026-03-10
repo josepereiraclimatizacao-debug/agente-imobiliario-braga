@@ -12,32 +12,51 @@ from urllib.parse import urljoin
 TOKEN = "8748185653:AAG5nXSBrbay_34zVtd7dUJFblvDy7XsaNc"
 CHAT_ID = "8248415390"
 
+PRECO_MAX = 125000
+
 URLS = [
-    "https://www.imovirtual.com/comprar/apartamento/braga/",
-    "https://www.idealista.pt/comprar-casas/braga/",
-    "https://www.olx.pt/imoveis/apartamentos-casas-a-venda/braga/",
-    "https://casa.sapo.pt/comprar-apartamentos/braga/",
-    "https://supercasa.pt/comprar-casas/braga/"
+"https://www.imovirtual.com/comprar/apartamento/braga/",
+"https://www.idealista.pt/comprar-casas/braga/",
+"https://www.olx.pt/imoveis/apartamentos-casas-a-venda/braga/",
+"https://casa.sapo.pt/comprar-apartamentos/braga/",
+"https://supercasa.pt/comprar-casas/braga/"
 ]
 
 HEADERS = {
-    "User-Agent":
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
-    "(KHTML, like Gecko) Chrome/120.0 Safari/537.36",
-    "Accept-Language": "pt-PT,pt;q=0.9"
+"User-Agent":
+"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+"(KHTML, like Gecko) Chrome/120.0 Safari/537.36"
 }
 
 HISTORICO_FILE = "historico.json"
 
+TIPOLOGIAS = ["t0","t1","t2"]
+
+ZONAS_UNIVERSIDADE = [
+"gualtar",
+"universidade",
+"campus",
+"são vítor",
+"são vicente"
+]
+
 PALAVRAS_OPORTUNIDADE = [
-    "remodelar",
-    "renovar",
-    "recuperar",
-    "obras",
-    "urgente",
-    "oportunidade",
-    "abaixo do mercado",
-    "negociável"
+"remodelar",
+"renovar",
+"recuperar",
+"obras",
+"urgente",
+"oportunidade",
+"negociável",
+"abaixo do mercado"
+]
+
+PALAVRAS_PREMERCADO = [
+"herança",
+"banco",
+"leilão",
+"venda urgente",
+"particular"
 ]
 
 # ============================
@@ -49,26 +68,25 @@ def enviar_telegram(texto):
     url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
 
     data = {
-        "chat_id": CHAT_ID,
-        "text": texto
+    "chat_id": CHAT_ID,
+    "text": texto
     }
 
     try:
-        requests.post(url, data=data)
+        requests.post(url,data=data)
     except:
         pass
 
-
-enviar_telegram("🤖 Agente imobiliário Braga iniciado")
+enviar_telegram("🤖 Agente Braga iniciado")
 
 # ============================
-# HISTÓRICO
+# HISTORICO
 # ============================
 
 if os.path.exists(HISTORICO_FILE):
 
     try:
-        with open(HISTORICO_FILE, "r") as f:
+        with open(HISTORICO_FILE,"r") as f:
             historico = json.load(f)
     except:
         historico = []
@@ -90,21 +108,21 @@ for url in URLS:
 
     try:
 
-        print("A analisar:", url)
+        print("A analisar:",url)
 
-        response = requests.get(url, headers=HEADERS, timeout=15)
+        response = requests.get(url,headers=HEADERS,timeout=15)
 
         if response.status_code != 200:
-            print("Erro acesso:", url)
+            print("Erro acesso:",url)
             continue
 
-        soup = BeautifulSoup(response.text, "html.parser")
+        soup = BeautifulSoup(response.text,"html.parser")
 
         anuncios = soup.select("article, .item, .offer-item, .listing-item")
 
-        print("ANUNCIOS ENCONTRADOS:", len(anuncios))
+        print("Anuncios encontrados:",len(anuncios))
 
-        for anuncio in anuncios[:60]:
+        for anuncio in anuncios[:80]:
 
             link_elem = anuncio.select_one("a")
 
@@ -116,41 +134,106 @@ for url in URLS:
             if not link:
                 continue
 
-            link = urljoin(url, link)
+            link = urljoin(url,link)
 
             titulo = link_elem.text.strip()
 
             if not titulo:
-                titulo = "Imóvel em Braga"
+                titulo = "Imóvel Braga"
 
             texto = titulo.lower()
+
+            # ============================
+            # TIPologia
+            # ============================
+
+            if not any(t in texto for t in TIPOLOGIAS):
+                continue
+
+            # ============================
+            # ZONA UNIVERSIDADE
+            # ============================
+
+            if not any(z in texto for z in ZONAS_UNIVERSIDADE):
+                continue
+
+            # ============================
+            # PREÇO
+            # ============================
+
+            preco_elem = anuncio.select_one(".price,.value,.listing-price")
+
+            preco = 0
+
+            if preco_elem:
+
+                texto_preco = preco_elem.text.replace("€","").replace(".","").replace(" ","")
+
+                try:
+                    preco = int(texto_preco)
+                except:
+                    preco = 0
+
+            if preco > PRECO_MAX:
+                continue
+
+            # ============================
+            # HISTORICO
+            # ============================
 
             if link in historico:
                 continue
 
             historico.append(link)
+
             novos.append(link)
 
             total += 1
 
             mensagem = f"""
-🏠 Novo anúncio encontrado
+🏠 Novo apartamento encontrado
 
 {titulo}
+
+Preço: {preco}€
 
 {link}
 """
 
             enviar_telegram(mensagem)
 
+            # ============================
+            # OPORTUNIDADES
+            # ============================
+
             if any(p in texto for p in PALAVRAS_OPORTUNIDADE):
 
                 oportunidades += 1
 
                 alerta = f"""
-🚨 OPORTUNIDADE DETECTADA
+🚨 OPORTUNIDADE
 
 {titulo}
+
+Preço: {preco}€
+
+{link}
+"""
+
+                enviar_telegram(alerta)
+
+            # ============================
+            # PRÉ MERCADO
+            # ============================
+
+            if any(p in texto for p in PALAVRAS_PREMERCADO):
+
+                alerta = f"""
+💰 POSSÍVEL NEGÓCIO PRÉ-MERCADO
+
+{titulo}
+
+Preço: {preco}€
 
 {link}
 """
@@ -159,32 +242,28 @@ for url in URLS:
 
     except Exception as e:
 
-        print("Erro scraping:", e)
-
-        continue
+        print("Erro scraping:",e)
 
 # ============================
-# GUARDAR HISTÓRICO
+# GUARDAR HISTORICO
 # ============================
 
 try:
-
-    with open(HISTORICO_FILE, "w") as f:
-        json.dump(historico, f)
-
+    with open(HISTORICO_FILE,"w") as f:
+        json.dump(historico,f)
 except:
     pass
 
 # ============================
-# RELATÓRIO
+# RELATORIO
 # ============================
 
 mensagem = f"""
 📊 RELATÓRIO AGENTE BRAGA
 
-Anúncios analisados: {total}
+Analisados: {total}
 
-Novos encontrados: {len(novos)}
+Novos: {len(novos)}
 
 Oportunidades: {oportunidades}
 
