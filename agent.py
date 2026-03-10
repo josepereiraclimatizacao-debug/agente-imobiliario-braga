@@ -1,6 +1,6 @@
 import requests
 from bs4 import BeautifulSoup
-import telegram
+from telegram import Bot
 import json
 import os
 from datetime import datetime
@@ -14,45 +14,42 @@ TOKEN = "8748185653:AAG5nXSBrbay_34zVtd7dUJFblvDy7XsaNc"
 CHAT_ID = "8248415390"
 
 URLS = [
-    "https://www.idealista.pt/comprar-casas/braga/",
     "https://www.imovirtual.com/comprar/apartamento/braga/",
+    "https://www.idealista.pt/comprar-casas/braga/",
     "https://www.olx.pt/imoveis/apartamentos-casas-a-venda/braga/",
     "https://casa.sapo.pt/comprar-apartamentos/braga/",
     "https://supercasa.pt/comprar-casas/braga/"
 ]
 
 HEADERS = {
-    "User-Agent": "Mozilla/5.0",
+    "User-Agent":
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+    "(KHTML, like Gecko) Chrome/120.0 Safari/537.36",
     "Accept-Language": "pt-PT,pt;q=0.9"
 }
 
 HISTORICO_FILE = "historico.json"
 
-PALAVRAS_RENOVAR = [
+PALAVRAS_OPORTUNIDADE = [
     "remodelar",
     "renovar",
     "recuperar",
     "obras",
-    "investimento",
-    "para renovar"
-]
-
-PALAVRAS_OPORTUNIDADE = [
     "urgente",
     "oportunidade",
     "abaixo do mercado",
-    "preço negociável"
+    "negociável"
 ]
 
 # ============================
 # TELEGRAM
 # ============================
 
-bot = telegram.Bot(token=TOKEN)
+bot = Bot(token=TOKEN)
 
 bot.send_message(
     chat_id=CHAT_ID,
-    text="✅ Agente imobiliário Braga iniciado"
+    text="🤖 Agente imobiliário Braga iniciado"
 )
 
 # ============================
@@ -84,7 +81,9 @@ for url in URLS:
 
     try:
 
-        response = requests.get(url, headers=HEADERS, timeout=10)
+        print("A analisar:", url)
+
+        response = requests.get(url, headers=HEADERS, timeout=15)
 
         if response.status_code != 200:
             print("Erro acesso:", url)
@@ -92,11 +91,11 @@ for url in URLS:
 
         soup = BeautifulSoup(response.text, "html.parser")
 
-        anuncios = soup.select("article")
+        anuncios = soup.select("article, .item, .offer-item, .listing-item")
 
-        print("ANUNCIOS ENCONTRADOS:", len(anuncios), url)
+        print("ANUNCIOS ENCONTRADOS:", len(anuncios))
 
-        for anuncio in anuncios[:50]:
+        for anuncio in anuncios[:60]:
 
             link_elem = anuncio.select_one("a")
 
@@ -125,12 +124,28 @@ for url in URLS:
 
             total += 1
 
-            if any(p in texto for p in PALAVRAS_RENOVAR) or any(p in texto for p in PALAVRAS_OPORTUNIDADE):
+            mensagem = f"""
+🏠 Novo anúncio encontrado
+
+{titulo}
+
+{link}
+"""
+
+            try:
+                bot.send_message(
+                    chat_id=CHAT_ID,
+                    text=mensagem
+                )
+            except:
+                pass
+
+            if any(p in texto for p in PALAVRAS_OPORTUNIDADE):
 
                 oportunidades += 1
 
-                mensagem = f"""
-🏚 OPORTUNIDADE DETECTADA
+                alerta = f"""
+🚨 OPORTUNIDADE DETECTADA
 
 {titulo}
 
@@ -140,7 +155,7 @@ for url in URLS:
                 try:
                     bot.send_message(
                         chat_id=CHAT_ID,
-                        text=mensagem
+                        text=alerta
                     )
                 except:
                     pass
@@ -154,13 +169,15 @@ for url in URLS:
 # ============================
 
 try:
+
     with open(HISTORICO_FILE, "w") as f:
         json.dump(historico, f)
+
 except:
     pass
 
 # ============================
-# RELATÓRIO FINAL
+# RELATÓRIO
 # ============================
 
 mensagem = f"""
