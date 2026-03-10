@@ -1,292 +1,222 @@
 import requests
 from bs4 import BeautifulSoup
-import json
-import os
 import re
 import math
+import time
 from datetime import datetime
-
-TOKEN="8748185653:AAG5nXSBrbay_34zVtd7dUJFblvDy7XsaNc"
-CHAT_ID="8248415390"
-
-PRECO_MAX=200000
-
-UNI_LAT=41.561
-UNI_LON=-8.397
-VEL_PE=4.5
-
-HISTORICO_FILE="historico.json"
-
-HEADERS={"User-Agent":"Mozilla/5.0"}
 
 # =========================
 # TELEGRAM
 # =========================
 
+TOKEN = "8748185653:AAG5nXSBrbay_34zVtd7dUJFblvDy7XsaNc"
+CHAT_ID = "8248415390"
+
 def telegram(msg):
 
     try:
 
-        url=f"https://api.telegram.org/bot{TOKEN}/sendMessage"
+        url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
 
-        requests.post(url,data={
-        "chat_id":CHAT_ID,
-        "text":msg
-        })
+        requests.post(
+            url,
+            data={
+                "chat_id": CHAT_ID,
+                "text": msg
+            },
+            timeout=10
+        )
 
     except:
-
         pass
 
 
 # =========================
-# HISTORICO
+# CONFIG
 # =========================
 
-if os.path.exists(HISTORICO_FILE):
+PRECO_MAX = 200000
 
-    try:
-        with open(HISTORICO_FILE,"r") as f:
-            historico=json.load(f)
-    except:
-        historico=[]
+UNI_LAT = 41.561
+UNI_LON = -8.397
 
-else:
-    historico=[]
-
-historico=historico[-10000:]
+VEL_PE = 4.5
 
 
 # =========================
-# DISTANCIA UNIVERSIDADE
+# DISTÂNCIA
 # =========================
 
-def distancia():
+def distancia(lat1, lon1, lat2, lon2):
 
-    lat=41.55
-    lon=-8.42
+    R = 6371000
 
-    R=6371
+    phi1 = math.radians(lat1)
+    phi2 = math.radians(lat2)
 
-    dlat=math.radians(lat-UNI_LAT)
-    dlon=math.radians(lon-UNI_LON)
+    dphi = math.radians(lat2 - lat1)
+    dlambda = math.radians(lon2 - lon1)
 
-    a=math.sin(dlat/2)**2 + math.cos(math.radians(UNI_LAT))*math.cos(math.radians(lat))*math.sin(dlon/2)**2
+    a = math.sin(dphi/2)**2 + math.cos(phi1)*math.cos(phi2)*math.sin(dlambda/2)**2
 
-    c=2*math.atan2(math.sqrt(a),math.sqrt(1-a))
+    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1-a))
 
-    dist=R*c
-
-    dist_m=int(dist*1000)
-
-    tempo=int((dist/VEL_PE)*60)
-
-    return dist_m,tempo
+    return R * c
 
 
 # =========================
-# EXTRAIR PREÇO INTELIGENTE
+# EXTRAIR PREÇO CORRECTO
 # =========================
 
 def extrair_preco(html):
 
-    valores=re.findall(r"\d[\d\.\s]{4,}",html)
+    valores = re.findall(r"\d[\d\.\s]*\s?€", html)
 
-    numeros=[]
+    precos = []
 
     for v in valores:
 
-        try:
+        numero = re.sub(r"[^\d]", "", v)
 
-            n=int(v.replace(".","").replace(" ",""))
+        if numero:
 
-            numeros.append(n)
+            valor = int(numero)
 
-        except:
+            if 20000 < valor < 2000000:
 
-            pass
+                precos.append(valor)
 
-    numeros=sorted(numeros,reverse=True)
+    if not precos:
+        return None
 
-    for valor in numeros:
+    return max(precos)
 
-        if valor<20000:
-            continue
 
-        if valor>2000000:
-            continue
+# =========================
+# EXTRAIR ÁREA
+# =========================
 
-        return valor
+def extrair_area(html):
+
+    m = re.search(r"(\d{2,4})\s?m²", html)
+
+    if m:
+
+        return int(m.group(1))
 
     return None
 
 
 # =========================
-# SCRAPE IMOVIRTUAL
+# SCRAPE LINK
 # =========================
 
-def imovirtual():
-
-    print("A analisar: imovirtual")
-
-    links=[]
-
-    url="https://www.imovirtual.com/comprar/apartamento/braga/"
+def analisar_link(link):
 
     try:
 
-        r=requests.get(url,headers=HEADERS)
+        r = requests.get(link, timeout=15, headers={"User-Agent":"Mozilla/5.0"})
 
-        soup=BeautifulSoup(r.text,"html.parser")
+        html = r.text
 
-        for a in soup.select("article a"):
+        preco = extrair_preco(html)
 
-            link=a.get("href")
+        if not preco:
+            return None
 
-            if link and "ID" in link:
+        if preco > PRECO_MAX:
+            return None
 
-                links.append(link)
+        area = extrair_area(html)
+
+        return preco, area
 
     except:
 
-        pass
+        return None
+
+
+# =========================
+# BUSCA LINKS DUCKDUCKGO
+# =========================
+
+def procurar_links():
+
+    query = "apartamento braga site:imovirtual.com OR site:idealista.pt OR site:supercasa.pt OR site:casa.sapo.pt"
+
+    url = "https://duckduckgo.com/html/?q=" + query.replace(" ","+")
+
+    r = requests.get(url, headers={"User-Agent":"Mozilla/5.0"})
+
+    soup = BeautifulSoup(r.text,"html.parser")
+
+    links = []
+
+    for a in soup.select("a.result__a"):
+
+        link = a.get("href")
+
+        if link:
+
+            links.append(link)
 
     return links
 
 
 # =========================
-# DUCKDUCKGO SEARCH
+# AGENTE
 # =========================
 
-def duck():
+print("AGENTE IMOBILIARIO BRAGA V29")
 
-    print("A analisar: duckduckgo")
+links = procurar_links()
 
-    queries=[
+print("Links encontrados:", len(links))
 
-    "site:idealista.pt apartamento braga venda",
-    "site:supercasa.pt apartamento braga",
-    "site:casa.sapo.pt apartamento braga",
-    "site:olx.pt apartamento braga"
+enviados = 0
 
-    ]
-
-    links=[]
-
-    for q in queries:
-
-        url="https://duckduckgo.com/html/?q="+q.replace(" ","+")
-
-        try:
-
-            r=requests.get(url,headers=HEADERS)
-
-            soup=BeautifulSoup(r.text,"html.parser")
-
-            for a in soup.select("a"):
-
-                link=a.get("href")
-
-                if not link:
-                    continue
-
-                if "http" not in link:
-                    continue
-
-                if "duckduckgo" in link:
-                    continue
-
-                if "braga" not in link.lower():
-                    continue
-
-                links.append(link)
-
-        except:
-
-            pass
-
-    return links
-
-
-# =========================
-# RECOLHER LINKS
-# =========================
-
-links=[]
-
-links+=imovirtual()
-
-links+=duck()
-
-links=list(set(links))
-
-print("Links encontrados:",len(links))
-
-
-# =========================
-# ANALISAR LINKS
-# =========================
-
-total=0
 
 for link in links:
 
-    if link in historico:
+    print("Analisar:", link)
+
+    dados = analisar_link(link)
+
+    if not dados:
         continue
 
-    try:
+    preco, area = dados
 
-        r=requests.get(link,headers=HEADERS,timeout=10)
+    distancia_m = 0
+    tempo = 0
 
-        preco=extrair_preco(r.text)
-
-        if preco:
-
-            if preco>PRECO_MAX:
-                continue
-
-        else:
-
-            preco="Preço não detectado"
-
-        dist_m,tempo=distancia()
-
-        msg=f"""
+    msg = f"""
 🏠 IMÓVEL DETECTADO
 
-Preço: {preco}
+Preço: {preco} €
 
-Distância universidade: {dist_m} m
+Área: {area if area else "N/D"} m²
+
+Distância Universidade: {int(distancia_m)} m
+
 Tempo a pé: {tempo} min
 
 {link}
 """
 
-        telegram(msg)
+    telegram(msg)
 
-        historico.append(link)
+    enviados += 1
 
-        total+=1
-
-    except:
-
-        pass
-
-
-# =========================
-# GUARDAR HISTORICO
-# =========================
-
-with open(HISTORICO_FILE,"w") as f:
-
-    json.dump(historico,f)
+    time.sleep(2)
 
 
 telegram(f"""
 📊 RELATÓRIO AGENTE BRAGA
 
-Links encontrados: {len(links)}
-Imóveis enviados: {total}
+Links analisados: {len(links)}
+
+Imóveis enviados: {enviados}
 
 Hora: {datetime.now()}
 """)
