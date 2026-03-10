@@ -83,7 +83,7 @@ for url in URLS:
     for url in URLS:
 
         try:
-    response = requests.get(url, headers=HEADERS)
+            response = requests.get(url, headers=HEADERS)
 
     if response.status_code != 200:
         continue
