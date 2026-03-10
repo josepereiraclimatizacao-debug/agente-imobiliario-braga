@@ -37,7 +37,7 @@ def telegram(msg):
 # CONFIG
 # ===============================
 
-PRECO_MAX = 200000
+PRECO_MAX = 150000
 
 UNI_LAT = 41.561
 UNI_LON = -8.397
