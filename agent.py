@@ -7,127 +7,124 @@ import re
 from urllib.parse import urljoin
 from datetime import datetime
 
-# =========================================
+# =========================
 # TELEGRAM
-# =========================================
+# =========================
 
-TOKEN = "8748185653:AAG5nXSBrbay_34zVtd7dUJFblvDy7XsaNc"
-CHAT_ID = "8248415390"
+TOKEN="8748185653:AAG5nXSBrbay_34zVtd7dUJFblvDy7XsaNc"
+CHAT_ID="8248415390"
 
 def telegram(msg):
 
     try:
 
-        url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
+        url=f"https://api.telegram.org/bot{TOKEN}/sendMessage"
 
-        requests.post(
-            url,
-            data={
-                "chat_id": CHAT_ID,
-                "text": msg
-            },
-            timeout=10
-        )
+        requests.post(url,data={
+        "chat_id":CHAT_ID,
+        "text":msg
+        },timeout=10)
 
     except:
+
         pass
 
 
-# =========================================
+# =========================
 # CONFIG
-# =========================================
+# =========================
 
-PRECO_MAX = 250000
+PRECO_MAX=200000
 
-UNI_LAT = 41.561
-UNI_LON = -8.397
+UNI_LAT=41.561
+UNI_LON=-8.397
 
-VEL_PE = 4.5
+VEL_PE=4.5
 
-HISTORICO_FILE = "historico.json"
+HISTORICO_FILE="historico.json"
 
 
-# =========================================
-# SITES IMOBILIÁRIOS
-# =========================================
+# =========================
+# SITES
+# =========================
 
-URLS = [
+SITES={
 
-"https://www.imovirtual.com/comprar/apartamento/braga/",
-"https://www.idealista.pt/comprar-casas/braga/",
-"https://www.olx.pt/imoveis/apartamentos-casas-a-venda/braga/",
-"https://supercasa.pt/comprar-casas/braga/",
-"https://casa.sapo.pt/comprar-apartamentos/braga/",
-"https://www.remax.pt/comprar/apartamentos/braga",
-"https://www.era.pt/imoveis/comprar/braga",
-"https://www.chavenova.pt/imoveis/braga",
-"https://www.casayes.pt/imoveis/braga"
+"imovirtual":"https://www.imovirtual.com/comprar/apartamento/braga/",
+"idealista":"https://www.idealista.pt/comprar-casas/braga/",
+"supercasa":"https://supercasa.pt/comprar-casas/braga/",
+"casa_sapo":"https://casa.sapo.pt/comprar-apartamentos/braga/",
+"olx":"https://www.olx.pt/imoveis/apartamentos-casas-a-venda/braga/",
+"remax":"https://www.remax.pt/comprar/apartamentos/braga",
+"era":"https://www.era.pt/imoveis/comprar/braga",
+"chavenova":"https://www.chavenova.pt/imoveis/braga",
+"casayes":"https://www.casayes.pt/imoveis/braga"
 
-]
+}
 
-HEADERS = {
-"User-Agent": "Mozilla/5.0",
-"Accept-Language": "pt-PT,pt;q=0.9"
+HEADERS={
+"User-Agent":"Mozilla/5.0",
+"Accept-Language":"pt-PT,pt;q=0.9"
 }
 
 
-# =========================================
+# =========================
 # HISTÓRICO
-# =========================================
+# =========================
 
 if os.path.exists(HISTORICO_FILE):
 
     try:
 
         with open(HISTORICO_FILE,"r") as f:
-            historico = json.load(f)
+            historico=json.load(f)
 
     except:
-        historico = []
+        historico=[]
 
 else:
 
-    historico = []
+    historico=[]
 
-historico = historico[-5000:]
+historico=historico[-6000:]
 
 
-# =========================================
+# =========================
 # DISTÂNCIA
-# =========================================
+# =========================
 
 def distancia(lat,lon):
 
-    R = 6371
+    R=6371
 
-    dlat = math.radians(lat-UNI_LAT)
-    dlon = math.radians(lon-UNI_LON)
+    dlat=math.radians(lat-UNI_LAT)
+    dlon=math.radians(lon-UNI_LON)
 
-    a = math.sin(dlat/2)**2 + math.cos(math.radians(UNI_LAT)) * math.cos(math.radians(lat)) * math.sin(dlon/2)**2
+    a=math.sin(dlat/2)**2 + math.cos(math.radians(UNI_LAT))*math.cos(math.radians(lat))*math.sin(dlon/2)**2
 
-    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1-a))
+    c=2*math.atan2(math.sqrt(a),math.sqrt(1-a))
 
-    return R * c
+    return R*c
 
 
-# =========================================
-# EXTRAIR PREÇO CORRETO
-# =========================================
+# =========================
+# EXTRAIR PREÇO
+# =========================
 
 def extrair_preco(texto):
 
-    texto = texto.replace("\xa0"," ")
+    texto=texto.replace("\xa0"," ")
 
-    matches = re.findall(r"(\d[\d\s\.]{3,})\s*€", texto)
+    matches=re.findall(r"(\d[\d\s\.]{3,})\s*€",texto)
 
     for m in matches:
 
-        valor = int(m.replace(" ","").replace(".",""))
+        valor=int(m.replace(" ","").replace(".",""))
 
-        if valor < 20000:
+        if valor<20000:
             continue
 
-        if valor > 2000000:
+        if valor>2000000:
             continue
 
         return valor
@@ -135,77 +132,105 @@ def extrair_preco(texto):
     return None
 
 
-# =========================================
-# SCRAPER
-# =========================================
+# =========================
+# EXTRAIR LINKS
+# =========================
 
-print("AGENTE IMOBILIARIO BRAGA V19")
+def extrair_anuncios(site,soup):
 
-total = 0
+    if site=="imovirtual":
 
-for url in URLS:
+        return soup.select("article")
 
-    print("A analisar:",url)
+    if site=="idealista":
+
+        return soup.select(".item")
+
+    if site=="supercasa":
+
+        return soup.select(".property")
+
+    if site=="casa_sapo":
+
+        return soup.select(".searchResultItem")
+
+    if site=="olx":
+
+        return soup.select("article")
+
+    return soup.select("article,div")
+
+
+# =========================
+# START
+# =========================
+
+print("AGENTE IMOBILIARIO BRAGA V20")
+
+total=0
+
+for nome,url in SITES.items():
+
+    print("A analisar:",nome)
 
     try:
 
-        r = requests.get(url,headers=HEADERS,timeout=20)
+        r=requests.get(url,headers=HEADERS,timeout=20)
 
-        if r.status_code != 200:
-
-            print("Erro acesso:",url)
-
+        if r.status_code!=200:
             continue
 
-        soup = BeautifulSoup(r.text,"html.parser")
+        soup=BeautifulSoup(r.text,"html.parser")
 
-        anuncios = soup.select("article")
+        anuncios=extrair_anuncios(nome,soup)
 
         print("Anuncios encontrados:",len(anuncios))
 
         for anuncio in anuncios:
 
-            link_elem = anuncio.select_one("a")
+            link_elem=anuncio.select_one("a")
 
             if not link_elem:
                 continue
 
-            link = link_elem.get("href")
+            link=link_elem.get("href")
 
             if not link:
                 continue
 
-            link = urljoin(url,link)
+            link=urljoin(url,link)
 
             if link in historico:
                 continue
 
-            texto = anuncio.get_text(" ",strip=True)
+            texto=anuncio.get_text(" ",strip=True)
 
-            preco = extrair_preco(texto)
+            preco=extrair_preco(texto)
 
             if not preco:
                 continue
 
-            if preco > PRECO_MAX:
+            if preco>PRECO_MAX:
                 continue
 
-            lat = 41.55
-            lon = -8.42
+            lat=41.55
+            lon=-8.42
 
-            dist = distancia(lat,lon)
+            dist=distancia(lat,lon)
 
-            dist_m = int(dist * 1000)
+            dist_m=int(dist*1000)
 
-            tempo = int((dist / VEL_PE) * 60)
+            tempo=int((dist/VEL_PE)*60)
 
-            mensagem = f"""
+            mensagem=f"""
 🏠 IMÓVEL DETECTADO
 
 Preço anúncio: {preco} €
 
 Distância universidade: {dist_m} m
 Tempo a pé: {tempo} min
+
+Fonte: {nome}
 
 {link}
 """
@@ -214,16 +239,16 @@ Tempo a pé: {tempo} min
 
             historico.append(link)
 
-            total += 1
+            total+=1
 
     except Exception as e:
 
-        print("Erro scraping:",url)
+        print("Erro:",nome)
 
 
-# =========================================
+# =========================
 # GUARDAR HISTÓRICO
-# =========================================
+# =========================
 
 try:
 
@@ -234,9 +259,9 @@ except:
     pass
 
 
-# =========================================
+# =========================
 # RELATÓRIO
-# =========================================
+# =========================
 
 telegram(f"""
 📊 RELATÓRIO AGENTE BRAGA
