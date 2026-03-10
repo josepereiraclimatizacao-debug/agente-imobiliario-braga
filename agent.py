@@ -30,7 +30,7 @@ def telegram(msg):
 # CONFIG
 # =========================
 
-PRECO_MAX=150000
+PRECO_MAX=200000
 RENDA_ESTUDANTE=450
 PRECO_MEDIO_M2=2000
 
