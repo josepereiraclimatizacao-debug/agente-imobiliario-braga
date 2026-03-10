@@ -17,7 +17,7 @@ PRECO_MAX = 125000
 
 URLS = [
 "https://www.imovirtual.com/comprar/apartamento/braga/",
-"https://www.idealista.pt/comprar-casas/braga/",
+"https://www.idealista.pt/comprar-casas/braga/"
 ]
 
 HEADERS = {
@@ -45,8 +45,7 @@ PALAVRAS_OPORTUNIDADE = [
 "obras",
 "urgente",
 "oportunidade",
-"negociável",
-"abaixo do mercado"
+"negociável"
 ]
 
 PALAVRAS_PREMERCADO = [
@@ -57,8 +56,15 @@ PALAVRAS_PREMERCADO = [
 "venda urgente"
 ]
 
-# preço médio aproximado €/m2 braga
+# preço médio aproximado €/m2 Braga
 PRECO_MEDIO_M2 = 2000
+
+# renda média estudante
+RENDA_ESTUDANTE = 450
+
+# simulação crédito
+JURO = 0.04
+ANOS = 30
 
 # ============================
 # TELEGRAM
@@ -124,13 +130,29 @@ def extrair_area(texto):
 
     return 0
 
+
+def calcular_credito(preco):
+
+    entrada = preco * 0.1
+
+    emprestimo = preco - entrada
+
+    meses = ANOS * 12
+
+    taxa = JURO / 12
+
+    mensal = emprestimo * taxa / (1 - (1 + taxa) ** -meses)
+
+    return round(mensal)
+
+
 # ============================
 # INICIO
 # ============================
 
-print("AGENTE IMOBILIARIO BRAGA V3")
+print("AGENTE IMOBILIARIO BRAGA V4")
 
-enviar_telegram("🤖 Agente Braga V3 iniciado")
+enviar_telegram("🤖 Agente Braga V4 iniciado")
 
 total = 0
 novos = []
@@ -179,32 +201,16 @@ for url in URLS:
 
             texto = titulo.lower()
 
-            # ============================
-            # FILTRO TIPOLOGIA
-            # ============================
-
             if not any(t in texto for t in TIPOLOGIAS):
                 continue
 
-            # ============================
-            # FILTRO ZONA
-            # ============================
-
             if not any(z in texto for z in ZONAS_UNIVERSIDADE):
                 continue
-
-            # ============================
-            # PREÇO
-            # ============================
 
             preco = extrair_preco(anuncio.text)
 
             if preco > PRECO_MAX:
                 continue
-
-            # ============================
-            # HISTORICO
-            # ============================
 
             if link in historico:
                 continue
@@ -215,10 +221,6 @@ for url in URLS:
 
             total += 1
 
-            # ============================
-            # AREA
-            # ============================
-
             area = extrair_area(anuncio.text)
 
             preco_m2 = 0
@@ -226,29 +228,18 @@ for url in URLS:
             if area > 0 and preco > 0:
                 preco_m2 = preco / area
 
-            # ============================
-            # YIELD ESTUDANTES
-            # ============================
+            renda = RENDA_ESTUDANTE
 
-            renda_estimada = 450
+            yield_estimada = (renda * 12) / preco * 100 if preco else 0
 
-            yield_estimada = 0
+            credito = calcular_credito(preco)
 
-            if preco > 0:
-                yield_estimada = (renda_estimada * 12) / preco * 100
-
-            # ============================
-            # DETECÇÃO DESCONTO
-            # ============================
+            cashflow = renda - credito
 
             desconto = ""
 
             if preco_m2 > 0 and preco_m2 < PRECO_MEDIO_M2 * 0.6:
-                desconto = "🔥 POSSÍVEL 40% ABAIXO DO MERCADO"
-
-            # ============================
-            # MENSAGEM
-            # ============================
+                desconto = "🔥 40% ABAIXO DO MERCADO"
 
             mensagem = f"""
 🏠 NOVO IMÓVEL
@@ -260,7 +251,11 @@ for url in URLS:
 📐 Área: {area} m2
 💶 €/m2: {round(preco_m2,1)}
 
-📈 Yield estimada: {round(yield_estimada,1)}%
+📈 Yield: {round(yield_estimada,1)}%
+
+🏦 Crédito estimado: {credito}€
+
+💵 Cashflow: {round(cashflow)}€
 
 {desconto}
 
@@ -269,43 +264,31 @@ for url in URLS:
 
             enviar_telegram(mensagem)
 
-            # ============================
-            # OPORTUNIDADE
-            # ============================
-
             if any(p in texto for p in PALAVRAS_OPORTUNIDADE):
 
                 oportunidades += 1
 
-                alerta = f"""
-🚨 OPORTUNIDADE DETECTADA
+                enviar_telegram(f"""
+🚨 OPORTUNIDADE
 
 {titulo}
 
 Preço: {preco}€
 
 {link}
-"""
-
-                enviar_telegram(alerta)
-
-            # ============================
-            # PRÉ MERCADO
-            # ============================
+""")
 
             if any(p in texto for p in PALAVRAS_PREMERCADO):
 
-                alerta = f"""
-💰 NEGÓCIO ANTES DO MERCADO
+                enviar_telegram(f"""
+💰 NEGÓCIO PRÉ-MERCADO
 
 {titulo}
 
 Preço: {preco}€
 
 {link}
-"""
-
-                enviar_telegram(alerta)
+""")
 
     except Exception as e:
 
@@ -328,7 +311,7 @@ except:
 # ============================
 
 mensagem = f"""
-📊 RELATÓRIO AGENTE BRAGA V3
+📊 RELATÓRIO AGENTE BRAGA V4
 
 Analisados: {total}
 
