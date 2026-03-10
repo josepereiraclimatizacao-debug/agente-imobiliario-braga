@@ -7,9 +7,9 @@ import re
 from urllib.parse import urljoin
 from datetime import datetime
 
-# ======================================
+# =========================================
 # TELEGRAM
-# ======================================
+# =========================================
 
 TOKEN = "8748185653:AAG5nXSBrbay_34zVtd7dUJFblvDy7XsaNc"
 CHAT_ID = "8248415390"
@@ -33,33 +33,35 @@ def telegram(msg):
         pass
 
 
-# ======================================
+# =========================================
 # CONFIG
-# ======================================
+# =========================================
 
 PRECO_MAX = 200000
 
-# coordenadas universidade
 UNI_LAT = 41.561
 UNI_LON = -8.397
 
-# velocidade média a pé km/h
 VEL_PE = 4.5
 
 HISTORICO_FILE = "historico.json"
 
 
-# ======================================
-# SITES
-# ======================================
+# =========================================
+# SITES IMOBILIÁRIOS
+# =========================================
 
 URLS = [
 
 "https://www.imovirtual.com/comprar/apartamento/braga/",
 "https://www.idealista.pt/comprar-casas/braga/",
 "https://www.olx.pt/imoveis/apartamentos-casas-a-venda/braga/",
+"https://supercasa.pt/comprar-casas/braga/",
 "https://casa.sapo.pt/comprar-apartamentos/braga/",
-"https://supercasa.pt/comprar-casas/braga/"
+"https://www.remax.pt/comprar/apartamentos/braga",
+"https://www.era.pt/imoveis/comprar/braga",
+"https://www.chavenova.pt/imoveis/braga",
+"https://www.casayes.pt/imoveis/braga"
 
 ]
 
@@ -69,9 +71,9 @@ HEADERS = {
 }
 
 
-# ======================================
+# =========================================
 # HISTÓRICO
-# ======================================
+# =========================================
 
 if os.path.exists(HISTORICO_FILE):
 
@@ -87,12 +89,12 @@ else:
 
     historico = []
 
-historico = historico[-4000:]
+historico = historico[-5000:]
 
 
-# ======================================
-# DISTÂNCIA UNIVERSIDADE
-# ======================================
+# =========================================
+# DISTÂNCIA
+# =========================================
 
 def distancia(lat,lon):
 
@@ -108,9 +110,9 @@ def distancia(lat,lon):
     return R * c
 
 
-# ======================================
-# EXTRAIR PREÇO REAL
-# ======================================
+# =========================================
+# EXTRAIR PREÇO CORRETO
+# =========================================
 
 def extrair_preco(texto):
 
@@ -122,11 +124,9 @@ def extrair_preco(texto):
 
         valor = int(m.replace(" ","").replace(".",""))
 
-        # ignora valores €/m²
         if valor < 20000:
             continue
 
-        # ignora valores absurdos
         if valor > 2000000:
             continue
 
@@ -135,11 +135,11 @@ def extrair_preco(texto):
     return None
 
 
-# ======================================
+# =========================================
 # SCRAPER
-# ======================================
+# =========================================
 
-print("AGENTE IMOBILIARIO BRAGA V17")
+print("AGENTE IMOBILIARIO BRAGA V19")
 
 total = 0
 
@@ -190,7 +190,6 @@ for url in URLS:
             if preco > PRECO_MAX:
                 continue
 
-            # coordenadas aproximadas Braga
             lat = 41.55
             lon = -8.42
 
@@ -222,9 +221,9 @@ Tempo a pé: {tempo} min
         print("Erro scraping:",url)
 
 
-# ======================================
+# =========================================
 # GUARDAR HISTÓRICO
-# ======================================
+# =========================================
 
 try:
 
@@ -235,9 +234,9 @@ except:
     pass
 
 
-# ======================================
+# =========================================
 # RELATÓRIO
-# ======================================
+# =========================================
 
 telegram(f"""
 📊 RELATÓRIO AGENTE BRAGA
