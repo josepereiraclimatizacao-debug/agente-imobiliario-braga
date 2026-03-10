@@ -17,12 +17,15 @@ PRECO_MAX = 125000
 
 URLS = [
 "https://www.imovirtual.com/comprar/apartamento/braga/",
-"https://www.idealista.pt/comprar-casas/braga/"
+"https://www.idealista.pt/comprar-casas/braga/",
+"https://www.olx.pt/imoveis/apartamentos-casas-a-venda/braga/",
+"https://casa.sapo.pt/comprar-apartamentos/braga/",
+"https://supercasa.pt/comprar-casas/braga/"
 ]
 
 HEADERS = {
-"User-Agent":
-"Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
+"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120 Safari/537.36",
+"Accept-Language": "pt-PT,pt;q=0.9"
 }
 
 HISTORICO_FILE = "historico.json"
@@ -48,23 +51,20 @@ PALAVRAS_OPORTUNIDADE = [
 "negociável"
 ]
 
+PALAVRAS_PARTICULAR = [
+"particular",
+"sem imobiliária",
+"direto proprietário"
+]
+
 PALAVRAS_PREMERCADO = [
 "herança",
 "banco",
-"leilão",
-"particular",
-"venda urgente"
+"leilão"
 ]
 
-# preço médio aproximado €/m2 Braga
 PRECO_MEDIO_M2 = 2000
-
-# renda média estudante
 RENDA_ESTUDANTE = 450
-
-# simulação crédito
-JURO = 0.04
-ANOS = 30
 
 # ============================
 # TELEGRAM
@@ -107,7 +107,9 @@ historico = historico[-5000:]
 
 def extrair_preco(texto):
 
-    numeros = re.findall(r'\d+', texto.replace(".",""))
+    texto = texto.replace(".","")
+
+    numeros = re.findall(r'\d{4,6}', texto)
 
     if numeros:
         try:
@@ -130,29 +132,13 @@ def extrair_area(texto):
 
     return 0
 
-
-def calcular_credito(preco):
-
-    entrada = preco * 0.1
-
-    emprestimo = preco - entrada
-
-    meses = ANOS * 12
-
-    taxa = JURO / 12
-
-    mensal = emprestimo * taxa / (1 - (1 + taxa) ** -meses)
-
-    return round(mensal)
-
-
 # ============================
 # INICIO
 # ============================
 
-print("AGENTE IMOBILIARIO BRAGA V4")
+print("AGENTE IMOBILIARIO BRAGA V5")
 
-enviar_telegram("🤖 Agente Braga V4 iniciado")
+enviar_telegram("🤖 Agente Braga V5 iniciado")
 
 total = 0
 novos = []
@@ -176,11 +162,11 @@ for url in URLS:
 
         soup = BeautifulSoup(response.text,"html.parser")
 
-        anuncios = soup.select("article, .item")
+        anuncios = soup.select("article, .item, .offer-item, .listing-item")
 
         print("Anuncios encontrados:",len(anuncios))
 
-        for anuncio in anuncios[:120]:
+        for anuncio in anuncios[:150]:
 
             link_elem = anuncio.select_one("a")
 
@@ -201,11 +187,23 @@ for url in URLS:
 
             texto = titulo.lower()
 
+            # ============================
+            # TIPOLOGIA
+            # ============================
+
             if not any(t in texto for t in TIPOLOGIAS):
                 continue
 
+            # ============================
+            # ZONA
+            # ============================
+
             if not any(z in texto for z in ZONAS_UNIVERSIDADE):
                 continue
+
+            # ============================
+            # PREÇO
+            # ============================
 
             preco = extrair_preco(anuncio.text)
 
@@ -228,17 +226,11 @@ for url in URLS:
             if area > 0 and preco > 0:
                 preco_m2 = preco / area
 
-            renda = RENDA_ESTUDANTE
-
-            yield_estimada = (renda * 12) / preco * 100 if preco else 0
-
-            credito = calcular_credito(preco)
-
-            cashflow = renda - credito
+            yield_estimada = (RENDA_ESTUDANTE*12)/preco*100 if preco else 0
 
             desconto = ""
 
-            if preco_m2 > 0 and preco_m2 < PRECO_MEDIO_M2 * 0.6:
+            if preco_m2 > 0 and preco_m2 < PRECO_MEDIO_M2*0.6:
                 desconto = "🔥 40% ABAIXO DO MERCADO"
 
             mensagem = f"""
@@ -253,16 +245,16 @@ for url in URLS:
 
 📈 Yield: {round(yield_estimada,1)}%
 
-🏦 Crédito estimado: {credito}€
-
-💵 Cashflow: {round(cashflow)}€
-
 {desconto}
 
 {link}
 """
 
             enviar_telegram(mensagem)
+
+            # ============================
+            # OPORTUNIDADE
+            # ============================
 
             if any(p in texto for p in PALAVRAS_OPORTUNIDADE):
 
@@ -277,6 +269,26 @@ Preço: {preco}€
 
 {link}
 """)
+
+            # ============================
+            # PARTICULAR
+            # ============================
+
+            if any(p in texto for p in PALAVRAS_PARTICULAR):
+
+                enviar_telegram(f"""
+👤 VENDA PARTICULAR
+
+{titulo}
+
+Preço: {preco}€
+
+{link}
+""")
+
+            # ============================
+            # PRÉ MERCADO
+            # ============================
 
             if any(p in texto for p in PALAVRAS_PREMERCADO):
 
@@ -311,9 +323,9 @@ except:
 # ============================
 
 mensagem = f"""
-📊 RELATÓRIO AGENTE BRAGA V4
+📊 RELATÓRIO AGENTE BRAGA V5
 
-Analisados: {total}
+Anúncios analisados: {total}
 
 Novos encontrados: {len(novos)}
 
