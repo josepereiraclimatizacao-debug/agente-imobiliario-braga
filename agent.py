@@ -82,10 +82,23 @@ for url in URLS:
 
     for url in URLS:
 
-        try:
-            response = requests.get(url, headers=HEADERS)
+        for url in URLS:
 
-    if response.status_code != 200:
+    try:
+
+        response = requests.get(url, headers=HEADERS)
+
+        if response.status_code != 200:
+            continue
+
+        soup = BeautifulSoup(response.text, "html.parser")
+
+        anuncios = soup.select("article")
+
+        print("ANUNCIOS ENCONTRADOS:", len(anuncios))
+
+    except Exception as e:
+        print("Erro scraping:", e)
         continue
 
     soup = BeautifulSoup(response.text, "html.parser")
