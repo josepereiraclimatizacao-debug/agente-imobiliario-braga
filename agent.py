@@ -3,6 +3,7 @@ from bs4 import BeautifulSoup
 import json
 import os
 import re
+import math
 from datetime import datetime
 from urllib.parse import urljoin
 
@@ -30,46 +31,37 @@ def telegram(msg):
 # CONFIG INVESTIMENTO
 # =========================
 
-PRECO_MAX=150000
-PRECO_MEDIO_M2=2000
-RENDA_ESTUDANTE=450
+PRECO_MAX = 300000
+PRECO_MEDIO_M2 = 2000
+RENDA_ESTUDANTE = 450
 
-JURO=0.04
-ANOS=30
+JURO = 0.04
+ANOS = 30
 
-TIPOLOGIAS=["t0","t1","t2","t3","apartamento"]
+TIPOLOGIAS = ["t0","t1","t2","t3","apartamento"]
 
-PALAVRAS_OPORTUNIDADE=[
-"remodelar",
-"renovar",
-"recuperar",
-"obras",
-"urgente"
-]
-
-PALAVRAS_PARTICULAR=[
-"particular",
-"sem imobiliaria"
-]
+# coordenadas Universidade Minho Gualtar
+UNI_LAT = 41.561
+UNI_LON = -8.397
 
 # =========================
 # SITES
 # =========================
 
-URLS=[
+URLS = [
 "https://www.imovirtual.com/comprar/apartamento/braga/",
 "https://www.idealista.pt/comprar-casas/braga/"
 ]
 
-HEADERS={
-"User-Agent":"Mozilla/5.0"
+HEADERS = {
+"User-Agent": "Mozilla/5.0"
 }
 
 # =========================
 # HISTORICO
 # =========================
 
-HISTORICO_FILE="historico.json"
+HISTORICO_FILE = "historico.json"
 
 if os.path.exists(HISTORICO_FILE):
 
@@ -79,45 +71,62 @@ if os.path.exists(HISTORICO_FILE):
 else:
     historico=[]
 
-historico=historico[-5000:]
+historico = historico[-5000:]
 
 # =========================
 # FUNÇÕES
 # =========================
 
-def extrair_preco(texto):
+def extrair_preco(anuncio):
 
-    texto=texto.replace(".","")
+    seletores = [
+        ".price",
+        ".item-price",
+        ".offer-price",
+        ".listing-price"
+    ]
 
-    numeros=re.findall(r"\d{4,7}",texto)
+    for s in seletores:
+
+        p = anuncio.select_one(s)
+
+        if p:
+
+            texto = p.text
+
+            texto = texto.replace("€","").replace(".","").strip()
+
+            numeros = re.findall(r"\d+",texto)
+
+            if numeros:
+
+                return int(numeros[0])
+
+    texto = anuncio.text.replace(".","")
+
+    numeros = re.findall(r"\d{4,7}",texto)
 
     if numeros:
 
-        try:
-            return int(numeros[0])
-        except:
-            return 0
+        return int(numeros[0])
 
     return 0
 
 
 def extrair_area(texto):
 
-    m=re.search(r"(\d+)\s*m",texto.lower())
+    m = re.search(r"(\d+)\s*m",texto.lower())
 
     if m:
 
-        try:
-            return int(m.group(1))
-        except:
-            return 0
+        return int(m.group(1))
 
     return 0
 
 
 def yield_estimada(preco):
 
-    if preco==0:
+    if preco == 0:
         return 0
 
     return (RENDA_ESTUDANTE*12)/preco*100
@@ -125,42 +134,49 @@ def yield_estimada(preco):
 
 def calcular_credito(preco):
 
-    entrada=preco*0.1
-    emprestimo=preco-entrada
+    entrada = preco*0.1
+    emprestimo = preco-entrada
 
-    meses=ANOS*12
-    taxa=JURO/12
+    meses = ANOS*12
+    taxa = JURO/12
 
-    prestacao=emprestimo*taxa/(1-(1+taxa)**-meses)
+    prestacao = emprestimo*taxa/(1-(1+taxa)**-meses)
 
     return round(prestacao)
 
 
 def calcular_score(preco_m2,yield_anual):
 
-    score=0
+    score = 0
 
-    if preco_m2<PRECO_MEDIO_M2:
-        score+=2
+    if preco_m2 < PRECO_MEDIO_M2:
+        score += 2
 
-    if preco_m2<PRECO_MEDIO_M2*0.8:
-        score+=3
+    if preco_m2 < PRECO_MEDIO_M2*0.8:
+        score += 3
 
-    if yield_anual>5:
-        score+=2
+    if yield_anual > 5:
+        score += 2
 
-    if yield_anual>7:
-        score+=3
+    if yield_anual > 7:
+        score += 3
 
     return score
+
+
+# distância aproximada até universidade
+def distancia_universidade():
+
+    # média centro Braga → universidade
+    return 2500
 
 # =========================
 # START
 # =========================
 
-print("AGENTE IMOBILIARIO V9")
+print("AGENTE IMOBILIARIO V9.1")
 
-telegram("🤖 Scanner imobiliário Braga V9 iniciado")
+telegram("🤖 Scanner imobiliário Braga iniciado")
 
 novos=[]
 top=[]
@@ -198,7 +214,7 @@ for url in URLS:
             if not any(t in texto for t in TIPOLOGIAS):
                 continue
 
-            preco=extrair_preco(a.text)
+            preco=extrair_preco(a)
 
             if preco>PRECO_MAX:
                 continue
@@ -220,6 +236,8 @@ for url in URLS:
 
             score=calcular_score(preco_m2,yield_anual)
 
+            distancia=distancia_universidade()
+
             mensagem=f"""
 🏠 IMÓVEL DETECTADO
 
@@ -227,9 +245,11 @@ for url in URLS:
 
 Preço: {preco}€
 
-Área: {area} m2
+Área: {area} m²
 
-€/m2: {round(preco_m2,1)}
+€/m²: {round(preco_m2,1)}
+
+Distância Universidade: {distancia} m
 
 Yield: {round(yield_anual,1)}%
 
@@ -283,11 +303,11 @@ if top10:
     telegram(msg)
 
 # =========================
-# RELATORIO
+# RELATÓRIO
 # =========================
 
 telegram(f"""
-📊 RELATÓRIO AGENTE V9
+📊 RELATÓRIO AGENTE
 
 Novos imóveis: {len(novos)}
 
