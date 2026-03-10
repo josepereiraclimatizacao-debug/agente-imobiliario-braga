@@ -1,6 +1,5 @@
 import requests
 from bs4 import BeautifulSoup
-from telegram import Bot
 import json
 import os
 from datetime import datetime
@@ -45,12 +44,22 @@ PALAVRAS_OPORTUNIDADE = [
 # TELEGRAM
 # ============================
 
-bot = Bot(token=TOKEN)
+def enviar_telegram(texto):
 
-bot.send_message(
-    chat_id=CHAT_ID,
-    text="🤖 Agente imobiliário Braga iniciado"
-)
+    url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
+
+    data = {
+        "chat_id": CHAT_ID,
+        "text": texto
+    }
+
+    try:
+        requests.post(url, data=data)
+    except:
+        pass
+
+
+enviar_telegram("🤖 Agente imobiliário Braga iniciado")
 
 # ============================
 # HISTÓRICO
@@ -132,13 +141,7 @@ for url in URLS:
 {link}
 """
 
-            try:
-                bot.send_message(
-                    chat_id=CHAT_ID,
-                    text=mensagem
-                )
-            except:
-                pass
+            enviar_telegram(mensagem)
 
             if any(p in texto for p in PALAVRAS_OPORTUNIDADE):
 
@@ -152,16 +155,12 @@ for url in URLS:
 {link}
 """
 
-                try:
-                    bot.send_message(
-                        chat_id=CHAT_ID,
-                        text=alerta
-                    )
-                except:
-                    pass
+                enviar_telegram(alerta)
 
     except Exception as e:
+
         print("Erro scraping:", e)
+
         continue
 
 # ============================
@@ -192,10 +191,4 @@ Oportunidades: {oportunidades}
 Hora: {datetime.now()}
 """
 
-try:
-    bot.send_message(
-        chat_id=CHAT_ID,
-        text=mensagem
-    )
-except:
-    pass
+enviar_telegram(mensagem)
