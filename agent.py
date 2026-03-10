@@ -82,7 +82,7 @@ for url in URLS:
 
     for url in URLS:
 
-    try:
+        try:
 
         response = requests.get(url, headers=HEADERS)
 
