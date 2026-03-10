@@ -16,7 +16,6 @@ CHAT_ID = "8248415390"
 def telegram(msg):
 
     try:
-
         url=f"https://api.telegram.org/bot{TOKEN}/sendMessage"
 
         requests.post(url,data={
@@ -32,39 +31,25 @@ def telegram(msg):
 # =========================
 
 PRECO_MAX=300000
-RENDA_ESTUDANTE=450
 PRECO_MEDIO_M2=2000
+RENDA_ESTUDANTE=450
 
-TIPOLOGIAS=["t0","t1","t2"]
+JURO=0.04
+ANOS=30
 
-ZONAS=[
-"gualtar",
-"universidade",
-"campus",
-"sao vitor",
-"são vítor",
-"braga"
-]
+TIPOLOGIAS=["t0","t1","t2","t3","apartamento"]
 
 PALAVRAS_OPORTUNIDADE=[
 "remodelar",
 "renovar",
 "recuperar",
 "obras",
-"urgente",
-"oportunidade"
+"urgente"
 ]
 
 PALAVRAS_PARTICULAR=[
 "particular",
-"sem imobiliaria",
-"direto proprietario"
-]
-
-PALAVRAS_PREMERCADO=[
-"heranca",
-"banco",
-"leilao"
+"sem imobiliaria"
 ]
 
 # =========================
@@ -77,8 +62,7 @@ URLS=[
 ]
 
 HEADERS={
-"User-Agent":
-"Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
+"User-Agent":"Mozilla/5.0"
 }
 
 # =========================
@@ -93,7 +77,6 @@ if os.path.exists(HISTORICO_FILE):
         historico=json.load(f)
 
 else:
-
     historico=[]
 
 historico=historico[-5000:]
@@ -106,7 +89,7 @@ def extrair_preco(texto):
 
     texto=texto.replace(".","")
 
-    numeros=re.findall(r"\d{4,6}",texto)
+    numeros=re.findall(r"\d{4,7}",texto)
 
     if numeros:
 
@@ -140,21 +123,34 @@ def yield_estimada(preco):
     return (RENDA_ESTUDANTE*12)/preco*100
 
 
+def calcular_credito(preco):
+
+    entrada=preco*0.1
+    emprestimo=preco-entrada
+
+    meses=ANOS*12
+    taxa=JURO/12
+
+    prestacao=emprestimo*taxa/(1-(1+taxa)**-meses)
+
+    return round(prestacao)
+
+
 def calcular_score(preco_m2,yield_anual):
 
     score=0
 
-    if preco_m2<PRECO_MEDIO_M2*0.9:
+    if preco_m2<PRECO_MEDIO_M2:
         score+=2
 
-    if preco_m2<PRECO_MEDIO_M2*0.7:
-        score+=2
+    if preco_m2<PRECO_MEDIO_M2*0.8:
+        score+=3
 
     if yield_anual>5:
         score+=2
 
     if yield_anual>7:
-        score+=2
+        score+=3
 
     return score
 
@@ -162,12 +158,12 @@ def calcular_score(preco_m2,yield_anual):
 # START
 # =========================
 
-print("AGENTE IMOBILIARIO V7")
+print("AGENTE IMOBILIARIO V9")
 
-telegram("🤖 Scanner imobiliário Braga iniciado")
+telegram("🤖 Scanner imobiliário Braga V9 iniciado")
 
 novos=[]
-total=0
+top=[]
 
 # =========================
 # SCRAPING
@@ -177,22 +173,16 @@ for url in URLS:
 
     try:
 
-        print("A analisar:",url)
-
         r=requests.get(url,headers=HEADERS,timeout=20)
 
         if r.status_code!=200:
-
-            print("Falhou:",url)
             continue
 
         soup=BeautifulSoup(r.text,"html.parser")
 
         anuncios=soup.select("article,.item,.offer-item")
 
-        print("Encontrados:",len(anuncios))
-
-        for a in anuncios[:150]:
+        for a in anuncios[:200]:
 
             link_elem=a.select_one("a")
 
@@ -203,12 +193,9 @@ for url in URLS:
 
             titulo=link_elem.text.strip()
 
-            texto=titulo.lower()
+            texto=(titulo+" "+a.text).lower()
 
             if not any(t in texto for t in TIPOLOGIAS):
-                continue
-
-            if not any(z in texto for z in ZONAS):
                 continue
 
             preco=extrair_preco(a.text)
@@ -227,6 +214,10 @@ for url in URLS:
 
             yield_anual=yield_estimada(preco)
 
+            prestacao=calcular_credito(preco)
+
+            cashflow=RENDA_ESTUDANTE-prestacao
+
             score=calcular_score(preco_m2,yield_anual)
 
             mensagem=f"""
@@ -242,52 +233,20 @@ Preço: {preco}€
 
 Yield: {round(yield_anual,1)}%
 
-Score investimento: {score}/8
+Prestação crédito: {prestacao}€
+
+Cashflow: {cashflow}€
+
+Score investimento: {score}/10
 
 {link}
 """
 
             telegram(mensagem)
 
-            if any(p in texto for p in PALAVRAS_OPORTUNIDADE):
-
-                telegram(f"""
-🚨 OPORTUNIDADE
-
-{titulo}
-
-Preço: {preco}€
-
-{link}
-""")
-
-            if any(p in texto for p in PALAVRAS_PARTICULAR):
-
-                telegram(f"""
-👤 VENDA PARTICULAR
-
-{titulo}
-
-Preço: {preco}€
-
-{link}
-""")
-
-            if any(p in texto for p in PALAVRAS_PREMERCADO):
-
-                telegram(f"""
-💰 NEGÓCIO PRÉ-MERCADO
-
-{titulo}
-
-Preço: {preco}€
-
-{link}
-""")
+            top.append((score,titulo,link))
 
             novos.append(link)
-
-            total+=1
 
     except Exception as e:
 
@@ -302,15 +261,35 @@ with open(HISTORICO_FILE,"w") as f:
     json.dump(historico,f)
 
 # =========================
-# RELATÓRIO
+# TOP INVESTIMENTOS
+# =========================
+
+top.sort(reverse=True)
+
+top10=top[:10]
+
+if top10:
+
+    msg="🏆 TOP OPORTUNIDADES DO DIA\n\n"
+
+    i=1
+
+    for score,titulo,link in top10:
+
+        msg+=f"{i}. {titulo}\nScore {score}\n{link}\n\n"
+
+        i+=1
+
+    telegram(msg)
+
+# =========================
+# RELATORIO
 # =========================
 
 telegram(f"""
-📊 RELATÓRIO AGENTE V7
+📊 RELATÓRIO AGENTE V9
 
-Analisados: {total}
-
-Novos: {len(novos)}
+Novos imóveis: {len(novos)}
 
 Hora: {datetime.now()}
 """)
