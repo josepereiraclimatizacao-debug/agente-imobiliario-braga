@@ -3,7 +3,6 @@ from bs4 import BeautifulSoup
 import json
 import os
 import re
-import math
 from datetime import datetime
 from urllib.parse import urljoin
 
@@ -15,15 +14,9 @@ TOKEN = "8748185653:AAG5nXSBrbay_34zVtd7dUJFblvDy7XsaNc"
 CHAT_ID = "8248415390"
 
 def telegram(msg):
-
     try:
         url=f"https://api.telegram.org/bot{TOKEN}/sendMessage"
-
-        requests.post(url,data={
-        "chat_id":CHAT_ID,
-        "text":msg
-        },timeout=10)
-
+        requests.post(url,data={"chat_id":CHAT_ID,"text":msg},timeout=10)
     except:
         pass
 
@@ -31,59 +24,57 @@ def telegram(msg):
 # CONFIG INVESTIMENTO
 # =========================
 
-PRECO_MAX = 300000
-PRECO_MEDIO_M2 = 2000
+PRECO_MAX = 150000
 RENDA_ESTUDANTE = 450
+PRECO_MEDIO_M2 = 2000
 
-JURO = 0.04
-ANOS = 30
-
-TIPOLOGIAS = ["t0","t1","t2","t3","apartamento"]
-
-# coordenadas Universidade Minho Gualtar
-UNI_LAT = 41.561
-UNI_LON = -8.397
+TIPOLOGIAS = ["t0","t1","t2","t3"]
 
 # =========================
-# SITES
+# SITES PESQUISA
 # =========================
 
 URLS = [
+
 "https://www.imovirtual.com/comprar/apartamento/braga/",
-"https://www.idealista.pt/comprar-casas/braga/"
+"https://www.idealista.pt/comprar-casas/braga/",
+"https://supercasa.pt/comprar-casas/braga/",
+"https://casa.sapo.pt/comprar-apartamentos/braga/",
+"https://www.olx.pt/imoveis/apartamentos-casas-a-venda/braga/"
+
 ]
 
 HEADERS = {
-"User-Agent": "Mozilla/5.0"
+"User-Agent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
 }
 
 # =========================
 # HISTORICO
 # =========================
 
-HISTORICO_FILE = "historico.json"
+HISTORICO_FILE="historico.json"
 
 if os.path.exists(HISTORICO_FILE):
-
     with open(HISTORICO_FILE,"r") as f:
         historico=json.load(f)
-
 else:
     historico=[]
 
 historico = historico[-5000:]
 
 # =========================
-# FUNÇÕES
+# EXTRAIR PREÇO CORRETO
 # =========================
 
 def extrair_preco(anuncio):
 
     seletores = [
-        ".price",
-        ".item-price",
-        ".offer-price",
-        ".listing-price"
+    ".price",
+    ".item-price",
+    ".offer-price",
+    ".listing-price",
+    ".price-tag",
+    "[class*=price]"
     ]
 
     for s in seletores:
@@ -92,62 +83,72 @@ def extrair_preco(anuncio):
 
         if p:
 
-            texto = p.text
+            texto=p.text
 
-            texto = texto.replace("€","").replace(".","").strip()
+            texto=texto.replace("€","").replace(".","")
 
-            numeros = re.findall(r"\d+",texto)
+            numeros=re.findall(r"\d+",texto)
 
             if numeros:
 
-                return int(numeros[0])
+                preco=int(numeros[0])
 
-    texto = anuncio.text.replace(".","")
+                if preco>10000 and preco<1000000:
 
-    numeros = re.findall(r"\d{4,7}",texto)
+                    return preco
+
+    # fallback geral
+    texto=anuncio.text.replace(".","")
+
+    numeros=re.findall(r"\d{5,7}",texto)
 
     if numeros:
 
-        return int(numeros[0])
+        preco=int(numeros[0])
+
+        if preco>10000:
+            return preco
 
     return 0
 
+
+# =========================
+# AREA
+# =========================
 
 def extrair_area(texto):
 
-    m = re.search(r"(\d+)\s*m",texto.lower())
+    m=re.search(r"(\d+)\s*m",texto.lower())
 
     if m:
 
-        return int(m.group(1))
+        try:
+            return int(m.group(1))
+        except:
+            return 0
 
     return 0
 
 
+# =========================
+# YIELD
+# =========================
+
 def yield_estimada(preco):
 
-    if preco == 0:
+    if preco==0:
         return 0
 
-    return (RENDA_ESTUDANTE*12)/preco*100
+    return round((RENDA_ESTUDANTE*12)/preco*100,2)
 
 
-def calcular_credito(preco):
-
-    entrada = preco*0.1
-    emprestimo = preco-entrada
-
-    meses = ANOS*12
-    taxa = JURO/12
-
-    prestacao = emprestimo*taxa/(1-(1+taxa)**-meses)
-
-    return round(prestacao)
-
+# =========================
+# SCORE INVESTIMENTO
+# =========================
 
 def calcular_score(preco_m2,yield_anual):
 
-    score = 0
+    score=0
 
     if preco_m2 < PRECO_MEDIO_M2:
         score += 2
@@ -164,17 +165,11 @@ def calcular_score(preco_m2,yield_anual):
     return score
 
 
-# distância aproximada até universidade
-def distancia_universidade():
-
-    # média centro Braga → universidade
-    return 2500
-
 # =========================
 # START
 # =========================
 
-print("AGENTE IMOBILIARIO V9.1")
+print("AGENTE IMOBILIARIO V11")
 
 telegram("🤖 Scanner imobiliário Braga iniciado")
 
@@ -189,14 +184,21 @@ for url in URLS:
 
     try:
 
+        print("A analisar:",url)
+
         r=requests.get(url,headers=HEADERS,timeout=20)
 
         if r.status_code!=200:
+
+            print("Erro acesso:",url)
+
             continue
 
         soup=BeautifulSoup(r.text,"html.parser")
 
-        anuncios=soup.select("article,.item,.offer-item")
+        anuncios=soup.select("article,.item,.offer-item,.listing")
+
+        print("Anuncios encontrados:",len(anuncios))
 
         for a in anuncios[:200]:
 
@@ -216,7 +218,7 @@ for url in URLS:
 
             preco=extrair_preco(a)
 
-            if preco>PRECO_MAX:
+            if preco==0 or preco>PRECO_MAX:
                 continue
 
             if link in historico:
@@ -226,36 +228,24 @@ for url in URLS:
 
             area=extrair_area(a.text)
 
-            preco_m2=preco/area if area else 0
+            preco_m2 = preco/area if area else 0
 
             yield_anual=yield_estimada(preco)
 
-            prestacao=calcular_credito(preco)
-
-            cashflow=RENDA_ESTUDANTE-prestacao
-
             score=calcular_score(preco_m2,yield_anual)
-
-            distancia=distancia_universidade()
 
             mensagem=f"""
 🏠 IMÓVEL DETECTADO
 
 {titulo}
 
-Preço: {preco}€
+Preço anúncio: {preco}€
 
 Área: {area} m²
 
 €/m²: {round(preco_m2,1)}
 
-Distância Universidade: {distancia} m
-
-Yield: {round(yield_anual,1)}%
-
-Prestação crédito: {prestacao}€
-
-Cashflow: {cashflow}€
+Yield estimada: {yield_anual}%
 
 Score investimento: {score}/10
 
@@ -264,13 +254,13 @@ Score investimento: {score}/10
 
             telegram(mensagem)
 
-            top.append((score,titulo,link))
-
             novos.append(link)
+
+            top.append((score,titulo,link))
 
     except Exception as e:
 
-        print("Erro:",e)
+        print("Erro scraping:",e)
 
 # =========================
 # GUARDAR HISTORICO
@@ -279,6 +269,7 @@ Score investimento: {score}/10
 with open(HISTORICO_FILE,"w") as f:
 
     json.dump(historico,f)
+
 
 # =========================
 # TOP INVESTIMENTOS
@@ -302,14 +293,15 @@ if top10:
 
     telegram(msg)
 
+
 # =========================
-# RELATÓRIO
+# RELATORIO
 # =========================
 
 telegram(f"""
 📊 RELATÓRIO AGENTE
 
-Novos imóveis: {len(novos)}
+Novos imóveis encontrados: {len(novos)}
 
 Hora: {datetime.now()}
 """)
