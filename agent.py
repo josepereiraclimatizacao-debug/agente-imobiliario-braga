@@ -11,23 +11,19 @@ from datetime import datetime
 # TELEGRAM
 # ===============================
 
-TOKEN = "8748185653:AAG5nXSBrbay_34zVtd7dUJFblvDy7XsaNc"
-CHAT_ID = "8248415390"
+TOKEN="8748185653:AAG5nXSBrbay_34zVtd7dUJFblvDy7XsaNc"
+CHAT_ID="8248415390"
 
 def telegram(msg):
 
     try:
 
-        url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
+        url=f"https://api.telegram.org/bot{TOKEN}/sendMessage"
 
-        requests.post(
-            url,
-            data={
-                "chat_id": CHAT_ID,
-                "text": msg
-            },
-            timeout=10
-        )
+        requests.post(url,data={
+        "chat_id":CHAT_ID,
+        "text":msg
+        },timeout=10)
 
     except:
         pass
@@ -37,21 +33,21 @@ def telegram(msg):
 # CONFIG
 # ===============================
 
-PRECO_MAX = 150000
+PRECO_MAX=200000
 
-UNI_LAT = 41.561
-UNI_LON = -8.397
+UNI_LAT=41.561
+UNI_LON=-8.397
 
-VEL_PE = 4.5
+VEL_PE=4.5
 
-HISTORICO_FILE = "historico.json"
+HISTORICO_FILE="historico.json"
 
 
 # ===============================
 # SITES
 # ===============================
 
-SITES = {
+SITES={
 
 "imovirtual":"https://www.imovirtual.com/comprar/apartamento/braga/",
 "idealista":"https://www.idealista.pt/comprar-casas/braga/",
@@ -65,7 +61,7 @@ SITES = {
 
 }
 
-HEADERS = {
+HEADERS={
 "User-Agent":"Mozilla/5.0",
 "Accept-Language":"pt-PT,pt;q=0.9"
 }
@@ -89,7 +85,7 @@ else:
 
     historico=[]
 
-historico=historico[-6000:]
+historico=historico[-8000:]
 
 
 # ===============================
@@ -118,11 +114,11 @@ def extrair_preco(texto):
 
     texto=texto.replace("\xa0"," ")
 
-    matches=re.findall(r"(\d[\d\s\.]{3,})\s*€",texto)
+    matches=re.findall(r"(\d{2,3}[\.\s]\d{3}|\d{5,6})",texto)
 
     for m in matches:
 
-        valor=int(m.replace(" ","").replace(".",""))
+        valor=int(m.replace(".","").replace(" ",""))
 
         if valor<20000:
             continue
@@ -136,7 +132,7 @@ def extrair_preco(texto):
 
 
 # ===============================
-# EXTRAIR ANÚNCIOS
+# PARSER POR SITE
 # ===============================
 
 def extrair_anuncios(site,soup):
@@ -163,7 +159,7 @@ def extrair_anuncios(site,soup):
 # START
 # ===============================
 
-print("AGENTE IMOBILIARIO BRAGA V21")
+print("AGENTE IMOBILIARIO BRAGA V22")
 
 total=0
 
@@ -208,6 +204,10 @@ for nome,url in SITES.items():
             if not preco:
                 continue
 
+            # filtro preço
+            if preco>PRECO_MAX:
+                continue
+
             lat=41.55
             lon=-8.42
 
@@ -217,17 +217,10 @@ for nome,url in SITES.items():
 
             tempo=int((dist/VEL_PE)*60)
 
-            if preco <= PRECO_MAX:
-                status="💰 ABAIXO DO PREÇO LIMITE"
-            else:
-                status="⚠ ACIMA DO PREÇO LIMITE"
-
             mensagem=f"""
 🏠 IMÓVEL DETECTADO
 
 Preço: {preco} €
-
-{status}
 
 Distância universidade: {dist_m} m
 Tempo a pé: {tempo} min
@@ -268,7 +261,7 @@ except:
 telegram(f"""
 📊 RELATÓRIO AGENTE BRAGA
 
-Imóveis encontrados: {total}
+Imóveis encontrados dentro do preço: {total}
 
 Hora: {datetime.now()}
 """)
