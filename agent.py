@@ -7,48 +7,51 @@ import re
 from urllib.parse import urljoin
 from datetime import datetime
 
-# =========================
+# ===============================
 # TELEGRAM
-# =========================
+# ===============================
 
-TOKEN="8748185653:AAG5nXSBrbay_34zVtd7dUJFblvDy7XsaNc"
-CHAT_ID="8248415390"
+TOKEN = "8748185653:AAG5nXSBrbay_34zVtd7dUJFblvDy7XsaNc"
+CHAT_ID = "8248415390"
 
 def telegram(msg):
 
     try:
 
-        url=f"https://api.telegram.org/bot{TOKEN}/sendMessage"
+        url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
 
-        requests.post(url,data={
-        "chat_id":CHAT_ID,
-        "text":msg
-        },timeout=10)
+        requests.post(
+            url,
+            data={
+                "chat_id": CHAT_ID,
+                "text": msg
+            },
+            timeout=10
+        )
 
     except:
-
         pass
 
 
-# =========================
+# ===============================
 # CONFIG
-# =========================
+# ===============================
 
-PRECO_MAX=200000
+PRECO_MAX = 200000
 
-UNI_LAT=41.561
-UNI_LON=-8.397
+UNI_LAT = 41.561
+UNI_LON = -8.397
 
-VEL_PE=4.5
+VEL_PE = 4.5
 
-HISTORICO_FILE="historico.json"
+HISTORICO_FILE = "historico.json"
 
 
-# =========================
+# ===============================
 # SITES
-# =========================
+# ===============================
 
-SITES={
+SITES = {
 
 "imovirtual":"https://www.imovirtual.com/comprar/apartamento/braga/",
 "idealista":"https://www.idealista.pt/comprar-casas/braga/",
@@ -62,15 +65,15 @@ SITES={
 
 }
 
-HEADERS={
+HEADERS = {
 "User-Agent":"Mozilla/5.0",
 "Accept-Language":"pt-PT,pt;q=0.9"
 }
 
 
-# =========================
+# ===============================
 # HISTÓRICO
-# =========================
+# ===============================
 
 if os.path.exists(HISTORICO_FILE):
 
@@ -89,9 +92,9 @@ else:
 historico=historico[-6000:]
 
 
-# =========================
+# ===============================
 # DISTÂNCIA
-# =========================
+# ===============================
 
 def distancia(lat,lon):
 
@@ -107,9 +110,9 @@ def distancia(lat,lon):
     return R*c
 
 
-# =========================
+# ===============================
 # EXTRAIR PREÇO
-# =========================
+# ===============================
 
 def extrair_preco(texto):
 
@@ -132,40 +135,35 @@ def extrair_preco(texto):
     return None
 
 
-# =========================
-# EXTRAIR LINKS
-# =========================
+# ===============================
+# EXTRAIR ANÚNCIOS
+# ===============================
 
 def extrair_anuncios(site,soup):
 
     if site=="imovirtual":
-
         return soup.select("article")
 
     if site=="idealista":
-
         return soup.select(".item")
 
     if site=="supercasa":
-
         return soup.select(".property")
 
     if site=="casa_sapo":
-
         return soup.select(".searchResultItem")
 
     if site=="olx":
-
         return soup.select("article")
 
     return soup.select("article,div")
 
 
-# =========================
+# ===============================
 # START
-# =========================
+# ===============================
 
-print("AGENTE IMOBILIARIO BRAGA V20")
+print("AGENTE IMOBILIARIO BRAGA V21")
 
 total=0
 
@@ -210,9 +208,6 @@ for nome,url in SITES.items():
             if not preco:
                 continue
 
-            if preco>PRECO_MAX:
-                continue
-
             lat=41.55
             lon=-8.42
 
@@ -222,10 +217,17 @@ for nome,url in SITES.items():
 
             tempo=int((dist/VEL_PE)*60)
 
+            if preco <= PRECO_MAX:
+                status="💰 ABAIXO DO PREÇO LIMITE"
+            else:
+                status="⚠ ACIMA DO PREÇO LIMITE"
+
             mensagem=f"""
 🏠 IMÓVEL DETECTADO
 
-Preço anúncio: {preco} €
+Preço: {preco} €
+
+{status}
 
 Distância universidade: {dist_m} m
 Tempo a pé: {tempo} min
@@ -246,9 +248,9 @@ Fonte: {nome}
         print("Erro:",nome)
 
 
-# =========================
+# ===============================
 # GUARDAR HISTÓRICO
-# =========================
+# ===============================
 
 try:
 
@@ -259,9 +261,9 @@ except:
     pass
 
 
-# =========================
+# ===============================
 # RELATÓRIO
-# =========================
+# ===============================
 
 telegram(f"""
 📊 RELATÓRIO AGENTE BRAGA
