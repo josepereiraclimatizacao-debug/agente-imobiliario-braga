@@ -19,9 +19,9 @@ HISTORICO_FILE="historico.json"
 
 HEADERS={"User-Agent":"Mozilla/5.0"}
 
-# ======================
+# =========================
 # TELEGRAM
-# ======================
+# =========================
 
 def telegram(msg):
 
@@ -39,9 +39,9 @@ def telegram(msg):
         pass
 
 
-# ======================
+# =========================
 # HISTORICO
-# ======================
+# =========================
 
 if os.path.exists(HISTORICO_FILE):
 
@@ -57,9 +57,9 @@ else:
 historico=historico[-10000:]
 
 
-# ======================
-# DISTANCIA
-# ======================
+# =========================
+# DISTANCIA UNIVERSIDADE
+# =========================
 
 def distancia():
 
@@ -84,19 +84,31 @@ def distancia():
     return dist_m,tempo
 
 
-# ======================
-# EXTRAIR PREÇO
-# ======================
+# =========================
+# EXTRAIR PREÇO INTELIGENTE
+# =========================
 
 def extrair_preco(html):
 
-    texto=html.lower()
+    valores=re.findall(r"\d[\d\.\s]{4,}",html)
 
-    valores=re.findall(r"\d{2,3}[\.\s]\d{3}",texto)
+    numeros=[]
 
     for v in valores:
 
-        valor=int(v.replace(".","").replace(" ",""))
+        try:
+
+            n=int(v.replace(".","").replace(" ",""))
+
+            numeros.append(n)
+
+        except:
+
+            pass
+
+    numeros=sorted(numeros,reverse=True)
+
+    for valor in numeros:
 
         if valor<20000:
             continue
@@ -109,9 +121,9 @@ def extrair_preco(html):
     return None
 
 
-# ======================
+# =========================
 # SCRAPE IMOVIRTUAL
-# ======================
+# =========================
 
 def imovirtual():
 
@@ -142,9 +154,9 @@ def imovirtual():
     return links
 
 
-# ======================
+# =========================
 # DUCKDUCKGO SEARCH
-# ======================
+# =========================
 
 def duck():
 
@@ -196,9 +208,9 @@ def duck():
     return links
 
 
-# ======================
+# =========================
 # RECOLHER LINKS
-# ======================
+# =========================
 
 links=[]
 
@@ -211,9 +223,9 @@ links=list(set(links))
 print("Links encontrados:",len(links))
 
 
-# ======================
+# =========================
 # ANALISAR LINKS
-# ======================
+# =========================
 
 total=0
 
@@ -227,9 +239,6 @@ for link in links:
         r=requests.get(link,headers=HEADERS,timeout=10)
 
         preco=extrair_preco(r.text)
-
-        print("Link:",link)
-        print("Preço:",preco)
 
         if preco:
 
@@ -264,9 +273,9 @@ Tempo a pé: {tempo} min
         pass
 
 
-# ======================
+# =========================
 # GUARDAR HISTORICO
-# ======================
+# =========================
 
 with open(HISTORICO_FILE,"w") as f:
 
@@ -276,8 +285,7 @@ with open(HISTORICO_FILE,"w") as f:
 telegram(f"""
 📊 RELATÓRIO AGENTE BRAGA
 
-Links analisados: {len(links)}
-
+Links encontrados: {len(links)}
 Imóveis enviados: {total}
 
 Hora: {datetime.now()}
