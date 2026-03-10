@@ -7,43 +7,49 @@ import re
 from urllib.parse import urljoin
 from datetime import datetime
 
-# ===================================
+# =========================================
 # TELEGRAM
-# ===================================
+# =========================================
 
 TOKEN = "8748185653:AAG5nXSBrbay_34zVtd7dUJFblvDy7XsaNc"
 CHAT_ID = "8248415390"
 
 def telegram(msg):
+
     try:
+
         url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
-        requests.post(url,data={
-            "chat_id":CHAT_ID,
-            "text":msg
-        },timeout=10)
+
+        requests.post(
+            url,
+            data={
+                "chat_id": CHAT_ID,
+                "text": msg
+            },
+            timeout=10
+        )
+
     except:
         pass
 
 
-# ===================================
+# =========================================
 # CONFIG
-# ===================================
+# =========================================
 
 PRECO_MAX = 200000
 
-# Universidade do Minho
 UNI_LAT = 41.561
 UNI_LON = -8.397
 
-# velocidade média a pé
 VEL_PE = 4.5
 
-# histórico anúncios
 HISTORICO_FILE = "historico.json"
 
-# ===================================
+
+# =========================================
 # SITES
-# ===================================
+# =========================================
 
 URLS = [
 
@@ -56,29 +62,37 @@ URLS = [
 ]
 
 HEADERS = {
-"User-Agent":"Mozilla/5.0",
-"Accept-Language":"pt-PT,pt;q=0.9"
+"User-Agent": "Mozilla/5.0",
+"Accept-Language": "pt-PT,pt;q=0.9"
 }
 
-# ===================================
+
+# =========================================
 # HISTÓRICO
-# ===================================
+# =========================================
 
 if os.path.exists(HISTORICO_FILE):
+
     try:
+
         with open(HISTORICO_FILE,"r") as f:
+
             historico = json.load(f)
+
     except:
+
         historico = []
+
 else:
+
     historico = []
 
-historico = historico[-3000:]
+historico = historico[-4000:]
 
 
-# ===================================
+# =========================================
 # DISTÂNCIA
-# ===================================
+# =========================================
 
 def distancia(lat,lon):
 
@@ -93,31 +107,40 @@ def distancia(lat,lon):
     return R*c
 
 
-# ===================================
-# PREÇO
-# ===================================
+# =========================================
+# PREÇO CORRETO
+# =========================================
 
 def extrair_preco(texto):
 
-    valores = re.findall(r"\d{2,3}[\.\s]?\d{3}",texto)
+    texto = texto.replace("\xa0"," ")
 
-    for v in valores:
+    # encontra números seguidos de €
+    matches = re.findall(r"(\d[\d\s\.]{3,})\s*€", texto)
 
-        p = int(v.replace(".","").replace(" ",""))
+    for m in matches:
 
-        if 20000 < p < 2000000:
-            return p
+        valor = int(m.replace(" ","").replace(".",""))
+
+        # ignora valores muito baixos (€/m²)
+        if valor < 20000:
+            continue
+
+        if valor > 2000000:
+            continue
+
+        return valor
 
     return None
 
 
-# ===================================
+# =========================================
 # SCRAPER
-# ===================================
+# =========================================
+
+print("AGENTE IMOBILIARIO BRAGA V17")
 
 total = 0
-
-print("AGENTE BRAGA V16")
 
 for url in URLS:
 
@@ -125,10 +148,12 @@ for url in URLS:
 
     try:
 
-        r = requests.get(url,headers=HEADERS,timeout=15)
+        r = requests.get(url,headers=HEADERS,timeout=20)
 
         if r.status_code != 200:
+
             print("Erro acesso:",url)
+
             continue
 
         soup = BeautifulSoup(r.text,"html.parser")
@@ -164,6 +189,7 @@ for url in URLS:
             if preco > PRECO_MAX:
                 continue
 
+
             # coordenadas aproximadas Braga
             lat = 41.55
             lon = -8.42
@@ -191,24 +217,29 @@ Tempo a pé: {tempo} min
 
             total += 1
 
+
     except Exception as e:
 
         print("Erro scraping:",url)
 
-# ===================================
+
+# =========================================
 # GUARDAR HISTÓRICO
-# ===================================
+# =========================================
 
 try:
+
     with open(HISTORICO_FILE,"w") as f:
+
         json.dump(historico,f)
+
 except:
     pass
 
 
-# ===================================
+# =========================================
 # RELATÓRIO
-# ===================================
+# =========================================
 
 telegram(f"""
 📊 RELATÓRIO AGENTE BRAGA
