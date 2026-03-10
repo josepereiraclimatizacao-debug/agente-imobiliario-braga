@@ -7,9 +7,9 @@ import re
 from urllib.parse import urljoin
 from datetime import datetime
 
-# =========================================
+# ======================================
 # TELEGRAM
-# =========================================
+# ======================================
 
 TOKEN = "8748185653:AAG5nXSBrbay_34zVtd7dUJFblvDy7XsaNc"
 CHAT_ID = "8248415390"
@@ -33,23 +33,25 @@ def telegram(msg):
         pass
 
 
-# =========================================
+# ======================================
 # CONFIG
-# =========================================
+# ======================================
 
 PRECO_MAX = 200000
 
+# coordenadas universidade
 UNI_LAT = 41.561
 UNI_LON = -8.397
 
+# velocidade média a pé km/h
 VEL_PE = 4.5
 
 HISTORICO_FILE = "historico.json"
 
 
-# =========================================
+# ======================================
 # SITES
-# =========================================
+# ======================================
 
 URLS = [
 
@@ -67,20 +69,18 @@ HEADERS = {
 }
 
 
-# =========================================
+# ======================================
 # HISTÓRICO
-# =========================================
+# ======================================
 
 if os.path.exists(HISTORICO_FILE):
 
     try:
 
         with open(HISTORICO_FILE,"r") as f:
-
             historico = json.load(f)
 
     except:
-
         historico = []
 
 else:
@@ -90,9 +90,9 @@ else:
 historico = historico[-4000:]
 
 
-# =========================================
-# DISTÂNCIA
-# =========================================
+# ======================================
+# DISTÂNCIA UNIVERSIDADE
+# ======================================
 
 def distancia(lat,lon):
 
@@ -102,30 +102,31 @@ def distancia(lat,lon):
     dlon = math.radians(lon-UNI_LON)
 
     a = math.sin(dlat/2)**2 + math.cos(math.radians(UNI_LAT)) * math.cos(math.radians(lat)) * math.sin(dlon/2)**2
-    c = 2*math.atan2(math.sqrt(a),math.sqrt(1-a))
 
-    return R*c
+    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1-a))
+
+    return R * c
 
 
-# =========================================
-# PREÇO CORRETO
-# =========================================
+# ======================================
+# EXTRAIR PREÇO REAL
+# ======================================
 
 def extrair_preco(texto):
 
     texto = texto.replace("\xa0"," ")
 
-    # encontra números seguidos de €
     matches = re.findall(r"(\d[\d\s\.]{3,})\s*€", texto)
 
     for m in matches:
 
         valor = int(m.replace(" ","").replace(".",""))
 
-        # ignora valores muito baixos (€/m²)
+        # ignora valores €/m²
         if valor < 20000:
             continue
 
+        # ignora valores absurdos
         if valor > 2000000:
             continue
 
@@ -134,9 +135,9 @@ def extrair_preco(texto):
     return None
 
 
-# =========================================
+# ======================================
 # SCRAPER
-# =========================================
+# ======================================
 
 print("AGENTE IMOBILIARIO BRAGA V17")
 
@@ -189,16 +190,15 @@ for url in URLS:
             if preco > PRECO_MAX:
                 continue
 
-
             # coordenadas aproximadas Braga
             lat = 41.55
             lon = -8.42
 
             dist = distancia(lat,lon)
 
-            dist_m = int(dist*1000)
+            dist_m = int(dist * 1000)
 
-            tempo = int((dist/VEL_PE)*60)
+            tempo = int((dist / VEL_PE) * 60)
 
             mensagem = f"""
 🏠 IMÓVEL DETECTADO
@@ -217,29 +217,27 @@ Tempo a pé: {tempo} min
 
             total += 1
 
-
     except Exception as e:
 
         print("Erro scraping:",url)
 
 
-# =========================================
+# ======================================
 # GUARDAR HISTÓRICO
-# =========================================
+# ======================================
 
 try:
 
     with open(HISTORICO_FILE,"w") as f:
-
         json.dump(historico,f)
 
 except:
     pass
 
 
-# =========================================
+# ======================================
 # RELATÓRIO
-# =========================================
+# ======================================
 
 telegram(f"""
 📊 RELATÓRIO AGENTE BRAGA
