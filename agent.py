@@ -13,7 +13,6 @@ PRECO_MAX=200000
 
 UNI_LAT=41.561
 UNI_LON=-8.397
-
 VEL_PE=4.5
 
 HISTORICO_FILE="historico.json"
@@ -87,7 +86,7 @@ def distancia():
 
 
 # =========================
-# EXTRAIR PRECO
+# EXTRAIR PREÇO
 # =========================
 
 def extrair_preco(texto):
@@ -112,7 +111,7 @@ def extrair_preco(texto):
 
 
 # =========================
-# GOOGLE SEARCH
+# DUCKDUCKGO SEARCH
 # =========================
 
 queries=[
@@ -121,9 +120,7 @@ queries=[
 "site:imovirtual.com apartamento braga",
 "site:supercasa.pt apartamento braga",
 "site:casa.sapo.pt apartamento braga",
-"site:olx.pt apartamento braga",
-"site:era.pt apartamento braga",
-"site:remax.pt apartamento braga"
+"site:olx.pt apartamento braga"
 
 ]
 
@@ -131,7 +128,7 @@ links=[]
 
 for q in queries:
 
-    url="https://www.google.com/search?q="+q.replace(" ","+")
+    url="https://duckduckgo.com/html/?q="+q.replace(" ","+")
 
     try:
 
@@ -139,17 +136,13 @@ for q in queries:
 
         soup=BeautifulSoup(r.text,"html.parser")
 
-        for a in soup.select("a"):
+        for a in soup.select("a.result__a"):
 
-            href=a.get("href")
+            link=a.get("href")
 
-            if href and "/url?q=" in href:
+            if link and "braga" in link.lower():
 
-                link=href.split("/url?q=")[1].split("&")[0]
-
-                if "braga" in link.lower():
-
-                    links.append(link)
+                links.append(link)
 
     except:
 
