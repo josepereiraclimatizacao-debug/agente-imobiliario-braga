@@ -31,7 +31,7 @@ def telegram(msg):
 # CONFIG INVESTIMENTO
 # =========================
 
-PRECO_MAX=175000
+PRECO_MAX=300000
 RENDA_ESTUDANTE=450
 PRECO_MEDIO_M2=2000
 
