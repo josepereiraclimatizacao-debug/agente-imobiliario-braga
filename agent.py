@@ -14,34 +14,34 @@ TOKEN = "8748185653:AAG5nXSBrbay_34zVtd7dUJFblvDy7XsaNc"
 CHAT_ID = "8248415390"
 
 URLS = [
-"https://www.idealista.pt/comprar-casas/braga/",
-"https://www.imovirtual.com/comprar/apartamento/braga/",
-"https://www.olx.pt/imoveis/apartamentos-casas-a-venda/braga/",
-"https://casa.sapo.pt/comprar-apartamentos/braga/",
-"https://supercasa.pt/comprar-casas/braga/"
+    "https://www.idealista.pt/comprar-casas/braga/",
+    "https://www.imovirtual.com/comprar/apartamento/braga/",
+    "https://www.olx.pt/imoveis/apartamentos-casas-a-venda/braga/",
+    "https://casa.sapo.pt/comprar-apartamentos/braga/",
+    "https://supercasa.pt/comprar-casas/braga/"
 ]
 
 HEADERS = {
-"User-Agent": "Mozilla/5.0",
-"Accept-Language": "pt-PT,pt;q=0.9"
+    "User-Agent": "Mozilla/5.0",
+    "Accept-Language": "pt-PT,pt;q=0.9"
 }
 
 HISTORICO_FILE = "historico.json"
 
 PALAVRAS_RENOVAR = [
-"remodelar",
-"renovar",
-"recuperar",
-"obras",
-"investimento",
-"para renovar"
+    "remodelar",
+    "renovar",
+    "recuperar",
+    "obras",
+    "investimento",
+    "para renovar"
 ]
 
 PALAVRAS_OPORTUNIDADE = [
-"urgente",
-"oportunidade",
-"abaixo do mercado",
-"preço negociável"
+    "urgente",
+    "oportunidade",
+    "abaixo do mercado",
+    "preço negociável"
 ]
 
 # ============================
@@ -50,22 +50,24 @@ PALAVRAS_OPORTUNIDADE = [
 
 bot = telegram.Bot(token=TOKEN)
 
-bot.send_message(chat_id=CHAT_ID, text="✅ Teste agente Braga iniciado")
+bot.send_message(
+    chat_id=CHAT_ID,
+    text="✅ Agente imobiliário Braga iniciado"
+)
 
 # ============================
-# HISTORICO
+# HISTÓRICO
 # ============================
 
 if os.path.exists(HISTORICO_FILE):
 
     try:
-        with open(HISTORICO_FILE,"r") as f:
+        with open(HISTORICO_FILE, "r") as f:
             historico = json.load(f)
     except:
         historico = []
 
 else:
-
     historico = []
 
 historico = historico[-2000:]
@@ -80,50 +82,19 @@ oportunidades = 0
 
 for url in URLS:
 
-    for url in URLS:
-
-        for url in URLS:
-
     try:
 
-        response = requests.get(url, headers=HEADERS)
+        response = requests.get(url, headers=HEADERS, timeout=10)
 
         if response.status_code != 200:
+            print("Erro acesso:", url)
             continue
 
         soup = BeautifulSoup(response.text, "html.parser")
 
         anuncios = soup.select("article")
 
-        print("ANUNCIOS ENCONTRADOS:", len(anuncios))
-
-    except Exception as e:
-        print("Erro scraping:", e)
-        continue
-
-    soup = BeautifulSoup(response.text, "html.parser")
-
-    anuncios = soup.select("article")
-
-    print("ANUNCIOS ENCONTRADOS:", len(anuncios))
-
-except Exception as e:
-    print("Erro scraping:", e)
-    continue
-
-        print("ANUNCIOS ENCONTRADOS:", len(anuncios))
-
-        for anuncio in anuncios:
-
-            link_elem = anuncio.select_one("a")
-
-            if not link_elem:
-                continue
-
-            link = link_elem.get("href")
-
-except Exception as e:
-   print("Erro scraping:", e)
+        print("ANUNCIOS ENCONTRADOS:", len(anuncios), url)
 
         for anuncio in anuncios[:50]:
 
@@ -137,7 +108,7 @@ except Exception as e:
             if not link:
                 continue
 
-            link = urljoin(url,link)
+            link = urljoin(url, link)
 
             titulo = link_elem.text.strip()
 
@@ -167,25 +138,29 @@ except Exception as e:
 """
 
                 try:
-                    bot.send_message(chat_id=CHAT_ID,text=mensagem)
+                    bot.send_message(
+                        chat_id=CHAT_ID,
+                        text=mensagem
+                    )
                 except:
                     pass
 
     except Exception as e:
-        print("Erro scraping:",e)
+        print("Erro scraping:", e)
+        continue
 
 # ============================
-# GUARDAR HISTORICO
+# GUARDAR HISTÓRICO
 # ============================
 
 try:
-    with open(HISTORICO_FILE,"w") as f:
-        json.dump(historico,f)
+    with open(HISTORICO_FILE, "w") as f:
+        json.dump(historico, f)
 except:
     pass
 
 # ============================
-# RELATORIO
+# RELATÓRIO FINAL
 # ============================
 
 mensagem = f"""
@@ -201,6 +176,9 @@ Hora: {datetime.now()}
 """
 
 try:
-    bot.send_message(chat_id=CHAT_ID,text=mensagem)
+    bot.send_message(
+        chat_id=CHAT_ID,
+        text=mensagem
+    )
 except:
     pass
