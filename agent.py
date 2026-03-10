@@ -21,9 +21,9 @@ HEADERS={
 "User-Agent":"Mozilla/5.0"
 }
 
-# =========================
+# =====================
 # TELEGRAM
-# =========================
+# =====================
 
 def telegram(msg):
 
@@ -40,9 +40,9 @@ def telegram(msg):
         pass
 
 
-# =========================
+# =====================
 # HISTORICO
-# =========================
+# =====================
 
 if os.path.exists(HISTORICO_FILE):
 
@@ -58,9 +58,9 @@ else:
 historico=historico[-10000:]
 
 
-# =========================
+# =====================
 # DISTANCIA
-# =========================
+# =====================
 
 def distancia():
 
@@ -85,13 +85,11 @@ def distancia():
     return dist_m,tempo
 
 
-# =========================
+# =====================
 # EXTRAIR PREÇO
-# =========================
+# =====================
 
 def extrair_preco(texto):
-
-    texto=texto.replace("\xa0"," ")
 
     matches=re.findall(r"(\d{2,3}[\.\s]\d{3}|\d{5,6})",texto)
 
@@ -110,25 +108,17 @@ def extrair_preco(texto):
     return None
 
 
-# =========================
-# DUCKDUCKGO SEARCH
-# =========================
+# =====================
+# SCRAPING IMOVIRTUAL
+# =====================
 
-queries=[
+def imovirtual():
 
-"site:idealista.pt apartamento braga venda",
-"site:imovirtual.com apartamento braga",
-"site:supercasa.pt apartamento braga",
-"site:casa.sapo.pt apartamento braga",
-"site:olx.pt apartamento braga"
+    print("A analisar: imovirtual")
 
-]
+    links=[]
 
-links=[]
-
-for q in queries:
-
-    url="https://duckduckgo.com/html/?q="+q.replace(" ","+")
+    url="https://www.imovirtual.com/comprar/apartamento/braga/"
 
     try:
 
@@ -136,11 +126,11 @@ for q in queries:
 
         soup=BeautifulSoup(r.text,"html.parser")
 
-        for a in soup.select("a.result__a"):
+        for a in soup.select("article a"):
 
             link=a.get("href")
 
-            if link and "braga" in link.lower():
+            if link and "ID" in link:
 
                 links.append(link)
 
@@ -148,10 +138,81 @@ for q in queries:
 
         pass
 
+    return links
 
-# =========================
+
+# =====================
+# DUCKDUCKGO SEARCH
+# =====================
+
+def duck():
+
+    print("A analisar: duckduckgo")
+
+    queries=[
+
+    "site:idealista.pt apartamento braga venda",
+    "site:supercasa.pt apartamento braga",
+    "site:casa.sapo.pt apartamento braga",
+    "site:olx.pt apartamento braga"
+
+    ]
+
+    links=[]
+
+    for q in queries:
+
+        url="https://duckduckgo.com/html/?q="+q.replace(" ","+")
+
+        try:
+
+            r=requests.get(url,headers=HEADERS)
+
+            soup=BeautifulSoup(r.text,"html.parser")
+
+            for a in soup.select("a"):
+
+                link=a.get("href")
+
+                if not link:
+                    continue
+
+                if "http" not in link:
+                    continue
+
+                if "duckduckgo" in link:
+                    continue
+
+                if "braga" not in link.lower():
+                    continue
+
+                links.append(link)
+
+        except:
+
+            pass
+
+    return links
+
+
+# =====================
+# RECOLHER LINKS
+# =====================
+
+links=[]
+
+links+=imovirtual()
+
+links+=duck()
+
+links=list(set(links))
+
+print("Links encontrados:",len(links))
+
+
+# =====================
 # ANALISAR LINKS
-# =========================
+# =====================
 
 total=0
 
@@ -164,9 +225,7 @@ for link in links:
 
         r=requests.get(link,headers=HEADERS,timeout=10)
 
-        texto=r.text
-
-        preco=extrair_preco(texto)
+        preco=extrair_preco(r.text)
 
         if not preco:
             continue
@@ -198,6 +257,10 @@ Tempo a pé: {tempo} min
         pass
 
 
+# =====================
+# GUARDAR HISTORICO
+# =====================
+
 with open(HISTORICO_FILE,"w") as f:
 
     json.dump(historico,f)
@@ -206,7 +269,9 @@ with open(HISTORICO_FILE,"w") as f:
 telegram(f"""
 📊 RELATÓRIO AGENTE BRAGA
 
-Imóveis encontrados dentro do preço: {total}
+Imóveis encontrados: {total}
 
 Hora: {datetime.now()}
 """)
+
+print("Fim execução")
