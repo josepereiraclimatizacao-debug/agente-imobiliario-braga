@@ -2,354 +2,220 @@ import requests
 from bs4 import BeautifulSoup
 import json
 import os
-import re
 import math
-from datetime import datetime
+import re
 from urllib.parse import urljoin
+from datetime import datetime
 
-TOKEN="8748185653:AAG5nXSBrbay_34zVtd7dUJFblvDy7XsaNc"
-CHAT_ID="8248415390"
+# ===================================
+# TELEGRAM
+# ===================================
+
+TOKEN = "8748185653:AAG5nXSBrbay_34zVtd7dUJFblvDy7XsaNc"
+CHAT_ID = "8248415390"
 
 def telegram(msg):
-
     try:
-
-        url=f"https://api.telegram.org/bot{TOKEN}/sendMessage"
-
+        url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
         requests.post(url,data={
-        "chat_id":CHAT_ID,
-        "text":msg
+            "chat_id":CHAT_ID,
+            "text":msg
         },timeout=10)
-
     except:
-
         pass
 
 
-# =========================
+# ===================================
 # CONFIG
-# =========================
+# ===================================
 
-PRECO_MAX=200000
-RENDA_ESTUDANTE=450
-PRECO_MEDIO_M2=3000
+PRECO_MAX = 200000
 
-TIPOLOGIAS=["t0","t1","t2","t3"]
-
-# coordenadas universidade minho
-UNI_LAT=41.561
-UNI_LON=-8.397
+# Universidade do Minho
+UNI_LAT = 41.561
+UNI_LON = -8.397
 
 # velocidade média a pé
-VEL_PE=4.5
+VEL_PE = 4.5
 
+# histórico anúncios
+HISTORICO_FILE = "historico.json"
 
-# =========================
+# ===================================
 # SITES
-# =========================
+# ===================================
 
-URLS=[
+URLS = [
 
 "https://www.imovirtual.com/comprar/apartamento/braga/",
 "https://www.idealista.pt/comprar-casas/braga/",
+"https://www.olx.pt/imoveis/apartamentos-casas-a-venda/braga/",
 "https://casa.sapo.pt/comprar-apartamentos/braga/",
-"https://supercasa.pt/comprar-casas/braga/",
-"https://www.olx.pt/imoveis/apartamentos-casas-a-venda/braga/"
+"https://supercasa.pt/comprar-casas/braga/"
 
 ]
 
-FACEBOOK_URL="https://www.facebook.com/marketplace/braga/search?query=apartamento"
-
-
-HEADERS={
-"User-Agent":"Mozilla/5.0"
+HEADERS = {
+"User-Agent":"Mozilla/5.0",
+"Accept-Language":"pt-PT,pt;q=0.9"
 }
 
-
-# =========================
-# HISTORICO
-# =========================
-
-HISTORICO_FILE="historico.json"
+# ===================================
+# HISTÓRICO
+# ===================================
 
 if os.path.exists(HISTORICO_FILE):
-
-    with open(HISTORICO_FILE,"r") as f:
-
-        historico=json.load(f)
-
+    try:
+        with open(HISTORICO_FILE,"r") as f:
+            historico = json.load(f)
+    except:
+        historico = []
 else:
+    historico = []
 
-    historico=[]
-
-historico=historico[-5000:]
-
-
-# =========================
-# PREÇO
-# =========================
-
-def extrair_preco(texto):
-
-    precos=re.findall(r"\d[\d\. ]+\s?€",texto)
-
-    for p in precos:
-
-        if "/m" in p.lower():
-
-            continue
-
-        valor=p.replace("€","").replace(".","").replace(" ","")
-
-        try:
-
-            valor=int(valor)
-
-            if valor>20000:
-
-                return valor
-
-        except:
-
-            pass
-
-    return 0
+historico = historico[-3000:]
 
 
-# =========================
-# AREA
-# =========================
-
-def extrair_area(texto):
-
-    m=re.search(r"(\d+)\s*m",texto.lower())
-
-    if m:
-
-        return int(m.group(1))
-
-    return 0
-
-
-# =========================
-# DISTANCIA
-# =========================
+# ===================================
+# DISTÂNCIA
+# ===================================
 
 def distancia(lat,lon):
 
-    R=6371000
+    R = 6371
 
-    phi1=math.radians(lat)
-    phi2=math.radians(UNI_LAT)
+    dlat = math.radians(lat-UNI_LAT)
+    dlon = math.radians(lon-UNI_LON)
 
-    dphi=math.radians(UNI_LAT-lat)
-    dlambda=math.radians(UNI_LON-lon)
-
-    a=(math.sin(dphi/2)**2 +
-       math.cos(phi1)*math.cos(phi2)*math.sin(dlambda/2)**2)
-
-    c=2*math.atan2(math.sqrt(a),math.sqrt(1-a))
+    a = math.sin(dlat/2)**2 + math.cos(math.radians(UNI_LAT)) * math.cos(math.radians(lat)) * math.sin(dlon/2)**2
+    c = 2*math.atan2(math.sqrt(a),math.sqrt(1-a))
 
     return R*c
 
 
-def tempo_pe(dist):
+# ===================================
+# PREÇO
+# ===================================
 
-    return int((dist/1000)/VEL_PE*60)
+def extrair_preco(texto):
 
+    valores = re.findall(r"\d{2,3}[\.\s]?\d{3}",texto)
 
-# =========================
-# SCORE
-# =========================
+    for v in valores:
 
-def yield_estimada(preco):
+        p = int(v.replace(".","").replace(" ",""))
 
-    return (RENDA_ESTUDANTE*12)/preco*100
+        if 20000 < p < 2000000:
+            return p
 
-
-def calcular_score(preco_m2,yield_anual):
-
-    score=0
-
-    if preco_m2<PRECO_MEDIO_M2:
-
-        score+=2
-
-    if preco_m2<PRECO_MEDIO_M2*0.8:
-
-        score+=3
-
-    if yield_anual>5:
-
-        score+=2
-
-    if yield_anual>7:
-
-        score+=3
-
-    return score
+    return None
 
 
-# =========================
-# START
-# =========================
+# ===================================
+# SCRAPER
+# ===================================
 
-print("AGENTE IMOBILIARIO V13")
+total = 0
 
-telegram("🤖 Scanner imobiliário Braga iniciado")
-
-novos=[]
-top=[]
-
-
-# =========================
-# SCRAPING PORTAIS
-# =========================
+print("AGENTE BRAGA V16")
 
 for url in URLS:
 
+    print("A analisar:",url)
+
     try:
 
-        print("A analisar:",url)
+        r = requests.get(url,headers=HEADERS,timeout=15)
 
-        r=requests.get(url,headers=HEADERS,timeout=20)
+        if r.status_code != 200:
+            print("Erro acesso:",url)
+            continue
 
-        soup=BeautifulSoup(r.text,"html.parser")
+        soup = BeautifulSoup(r.text,"html.parser")
 
-        anuncios=soup.select("article,.item,.offer-item,.listing")
+        anuncios = soup.select("article")
 
-        for a in anuncios[:200]:
+        print("Anuncios encontrados:",len(anuncios))
 
-            link_elem=a.select_one("a")
+        for anuncio in anuncios:
+
+            link_elem = anuncio.select_one("a")
 
             if not link_elem:
-
                 continue
 
-            link=urljoin(url,link_elem.get("href"))
+            link = link_elem.get("href")
 
-            titulo=link_elem.text.strip()
-
-            texto=(titulo+" "+a.text)
-
-            preco=extrair_preco(texto)
-
-            if preco==0 or preco>PRECO_MAX:
-
+            if not link:
                 continue
+
+            link = urljoin(url,link)
 
             if link in historico:
-
                 continue
 
-            historico.append(link)
+            texto = anuncio.get_text(" ",strip=True)
 
-            area=extrair_area(texto)
+            preco = extrair_preco(texto)
 
-            preco_m2=preco/area if area else 0
+            if not preco:
+                continue
 
-            yield_anual=yield_estimada(preco)
+            if preco > PRECO_MAX:
+                continue
 
-            score=calcular_score(preco_m2,yield_anual)
+            # coordenadas aproximadas Braga
+            lat = 41.55
+            lon = -8.42
 
-            # estimativa distancia centro braga
-            dist=2000
-            tempo=tempo_pe(dist)
+            dist = distancia(lat,lon)
 
-            mensagem=f"""
+            dist_m = int(dist*1000)
+
+            tempo = int((dist/VEL_PE)*60)
+
+            mensagem = f"""
 🏠 IMÓVEL DETECTADO
 
-{titulo}
+Preço anúncio: {preco} €
 
-Preço: {preco} €
-
-Área: {area} m²
-
-€/m²: {round(preco_m2,1)}
-
-Distância universidade: {int(dist)} m
-
+Distância universidade: {dist_m} m
 Tempo a pé: {tempo} min
-
-Yield: {round(yield_anual,2)} %
-
-Score investimento: {score}/10
 
 {link}
 """
 
             telegram(mensagem)
 
-            novos.append(link)
+            historico.append(link)
 
-            top.append((score,titulo,link))
+            total += 1
 
     except Exception as e:
 
-        print("Erro:",e)
+        print("Erro scraping:",url)
 
-
-# =========================
-# FACEBOOK MARKETPLACE
-# =========================
+# ===================================
+# GUARDAR HISTÓRICO
+# ===================================
 
 try:
-
-    r=requests.get(FACEBOOK_URL,headers=HEADERS)
-
-    soup=BeautifulSoup(r.text,"html.parser")
-
-    posts=soup.select("a")
-
-    for p in posts[:20]:
-
-        titulo=p.text
-
-        link="https://facebook.com"+p.get("href","")
-
-        if "apartamento" in titulo.lower():
-
-            telegram(f"""
-📱 Facebook Marketplace
-
-{titulo}
-
-{link}
-""")
-
+    with open(HISTORICO_FILE,"w") as f:
+        json.dump(historico,f)
 except:
-
     pass
 
 
-# =========================
-# HISTORICO
-# =========================
-
-with open(HISTORICO_FILE,"w") as f:
-
-    json.dump(historico,f)
-
-
-# =========================
-# TOP
-# =========================
-
-top.sort(reverse=True)
-
-msg="🏆 TOP OPORTUNIDADES\n\n"
-
-for i,(score,titulo,link) in enumerate(top[:10]):
-
-    msg+=f"{i+1}. {titulo}\nScore {score}\n{link}\n\n"
-
-telegram(msg)
-
+# ===================================
+# RELATÓRIO
+# ===================================
 
 telegram(f"""
-📊 RELATÓRIO
+📊 RELATÓRIO AGENTE BRAGA
 
-Novos imóveis: {len(novos)}
+Imóveis encontrados: {total}
 
 Hora: {datetime.now()}
 """)
+
+print("Fim execução")
