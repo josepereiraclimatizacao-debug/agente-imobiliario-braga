@@ -80,18 +80,32 @@ oportunidades = 0
 
 for url in URLS:
 
+    for url in URLS:
+
     try:
 
-        response = requests.get(url,headers=HEADERS,timeout=15)
+        response = requests.get(url, headers=HEADERS)
 
         if response.status_code != 200:
             continue
 
-        soup = BeautifulSoup(response.text,"html.parser")
+        soup = BeautifulSoup(response.text, "html.parser")
 
         anuncios = soup.select("article")
 
-print("ANUNCIOS ENCONTRADOS:", len(anuncios))
+        print("ANUNCIOS ENCONTRADOS:", len(anuncios))
+
+        for anuncio in anuncios:
+
+            link_elem = anuncio.select_one("a")
+
+            if not link_elem:
+                continue
+
+            link = link_elem.get("href")
+
+    except Exception as e:
+        print("Erro scraping:", e)
 
         for anuncio in anuncios[:50]:
 
